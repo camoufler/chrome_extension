@@ -1,0 +1,43 @@
+{
+	"name": "many-keys-map",
+	"version": "3.0.3",
+	"description": "A `Map` subclass with support for multiple keys for one entry.",
+	"keywords": [
+		"any",
+		"key",
+		"keys",
+		"many",
+		"map",
+		"multi",
+		"multimap",
+		"multiple"
+	],
+	"repository": "fregante/many-keys-map",
+	"funding": "https://github.com/sponsors/fregante",
+	"license": "MIT",
+	"author": "Federico Brigante <me@fregante.com> (https://fregante.com)",
+	"type": "module",
+	"exports": "./index.js",
+	"types": "./index.d.ts",
+	"files": [
+		"index.d.ts",
+		"index.js"
+	],
+	"scripts": {
+		"test": "tsc && xo && vitest"
+	},
+	"xo": {
+		"rules": {
+			"no-new": 0
+		}
+	},
+	"devDependencies": {
+		"@sindresorhus/tsconfig": "^7.0.0",
+		"typescript": "^5.8.3",
+		"vitest": "^3.2.4",
+		"xo": "^1.0.5"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}

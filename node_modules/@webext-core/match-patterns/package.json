@@ -1,0 +1,60 @@
+{
+  "name": "@webext-core/match-patterns",
+  "version": "2.0.0",
+  "description": "Utilities for working with match patterns.",
+  "keywords": [
+    "browser",
+    "browser-extension",
+    "chrome",
+    "chrome-extension",
+    "content",
+    "extension",
+    "firefox",
+    "match",
+    "pattern",
+    "safari",
+    "script",
+    "web-ext",
+    "web-extension",
+    "webext"
+  ],
+  "homepage": "https://github.com/aklinker1/webext-core/tree/main/packages/match-patterns",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aklinker1/webext-core.git",
+    "directory": "packages/match-patterns"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "buildc -- tsdown",
+    "test": "buildc --deps-only -- bun test",
+    "test:coverage": "buildc --deps-only -- bun test --coverage",
+    "check": "bun run build && check",
+    "prepack": "bun run build"
+  },
+  "devDependencies": {
+    "publint": "catalog:",
+    "tsconfig": "workspace:*",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": "*"
+  }
+}

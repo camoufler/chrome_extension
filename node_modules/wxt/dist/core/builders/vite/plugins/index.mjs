@@ -1,0 +1,17 @@
+import "./devHtmlPrerender.mjs";
+import "./devServerGlobals.mjs";
+import "./resolveVirtualModules.mjs";
+import "./tsconfigPaths.mjs";
+import "./noopBackground.mjs";
+import "./cssEntrypoints.mjs";
+import "./bundleAnalysis.mjs";
+import "./globals.mjs";
+import "./extensionApiMock.mjs";
+import "./entrypointGroupGlobals.mjs";
+import "./defineImportMeta.mjs";
+import "./removeEntrypointMainFunction.mjs";
+import "./wxtPluginLoader.mjs";
+import "./resolveAppConfig.mjs";
+import "./iifeFooter.mjs";
+import "./iifeAnonymous.mjs";
+export {};
