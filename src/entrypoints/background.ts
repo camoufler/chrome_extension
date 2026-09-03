@@ -2,19 +2,19 @@ import { ExtensionServiceWorkerMLCEngineHandler } from '@mlc-ai/web-llm';
 import { WEBLLM_PORT_NAME } from '@/lib/webllm';
 
 export default defineBackground(() => {
-  let handler: ExtensionServiceWorkerMLCEngineHandler | undefined;
+  const handlers = new Map();
 
   browser.runtime.onConnect.addListener((port) => {
     if (port.name !== WEBLLM_PORT_NAME) {
       return;
     }
 
-    if (!handler) {
-      handler = new ExtensionServiceWorkerMLCEngineHandler(port);
-    } else {
-      handler.setPort(port);
-    }
+    const handler = new ExtensionServiceWorkerMLCEngineHandler(port);
+    handlers.set(port, handler);
 
     port.onMessage.addListener(handler.onmessage.bind(handler));
+    port.onDisconnect.addListener(() => {
+      handlers.delete(port);
+    });
   });
 });

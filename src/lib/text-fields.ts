@@ -1,10 +1,5 @@
 const TEXT_INPUT_TYPES = new Set([
   'text',
-  'search',
-  'email',
-  'url',
-  'tel',
-  'number',
 ]);
 
 const SKIP_INPUT_TYPES = new Set([
@@ -23,6 +18,11 @@ const SKIP_INPUT_TYPES = new Set([
   'month',
   'week',
   'time',
+  'search',
+  'email',
+  'url',
+  'tel',
+  'number',
 ]);
 
 function isVisible(element: HTMLElement): boolean {
@@ -53,6 +53,36 @@ function isPasswordField(element: HTMLElement): boolean {
   return element.getAttribute('autocomplete') === 'current-password';
 }
 
+function hasText(value: string | null): boolean {
+  return Boolean(value?.trim());
+}
+
+const AI_INPUT_HINT = /(?:message|prompt|ask|chat|generate|question|reply|response)/i;
+
+function hasAiInputHint(element: HTMLElement): boolean {
+  const attributes = [
+    element.getAttribute('aria-label'),
+    element.getAttribute('placeholder'),
+    element.getAttribute('data-placeholder'),
+    element.getAttribute('name'),
+    element.getAttribute('id'),
+    String(element.className),
+  ];
+
+  if (attributes.some((value) => typeof value === 'string' && AI_INPUT_HINT.test(value))) {
+    return true;
+  }
+
+  const label = element.id
+    ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`)?.textContent
+    : element.closest('label')?.textContent;
+  if (label && AI_INPUT_HINT.test(label)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function isEligibleTextField(element: Element): element is HTMLElement {
   if (!(element instanceof HTMLElement) || element.dataset.aicamouflageIgnore === 'true') {
     return false;
@@ -68,11 +98,22 @@ export function isEligibleTextField(element: Element): element is HTMLElement {
       return false;
     }
 
-    return (TEXT_INPUT_TYPES.has(type) || type === '') && isVisible(element);
+    return (
+      (TEXT_INPUT_TYPES.has(type) || type === '') &&
+      hasText(element.value) &&
+      hasAiInputHint(element) &&
+      isVisible(element)
+    );
   }
 
   if (element instanceof HTMLTextAreaElement) {
-    return !element.disabled && !element.readOnly && isVisible(element);
+    return (
+      !element.disabled &&
+      !element.readOnly &&
+      hasText(element.value) &&
+      hasAiInputHint(element) &&
+      isVisible(element)
+    );
   }
 
   if (element.isContentEditable) {
@@ -81,11 +122,16 @@ export function isEligibleTextField(element: Element): element is HTMLElement {
       return false;
     }
 
-    return isVisible(element);
+    return hasText(element.textContent) && hasAiInputHint(element) && isVisible(element);
   }
 
   if (element.getAttribute('role') === 'textbox') {
-    return !isPasswordField(element) && isVisible(element);
+    return (
+      !isPasswordField(element) &&
+      hasText(element.textContent) &&
+      hasAiInputHint(element) &&
+      isVisible(element)
+    );
   }
 
   return false;

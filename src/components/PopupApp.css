@@ -54,6 +54,11 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.model-status {
+  display: grid;
+  gap: 4px;
+}
+
 button {
   border: 0;
   border-radius: 8px;

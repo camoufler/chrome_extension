@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   MAX_LOGO_SIZE,
   MIN_LOGO_SIZE,
+  DEFAULT_SETTINGS,
   type AppSettings,
 } from '@/lib/settings';
 import { settingsStorage } from '@/lib/storage';
@@ -18,12 +19,26 @@ export function PopupApp() {
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    void settingsStorage.getValue().then(setSettings);
-    return settingsStorage.watch((value) => {
-      if (value) {
+    let unwatch = () => {};
+
+    void settingsStorage
+      .getValue()
+      .then((value) => {
         setSettings(value);
-      }
-    });
+        unwatch = settingsStorage.watch((nextValue) => {
+          setSettings(nextValue);
+        });
+      })
+      .catch((cause) => {
+        setSettings(DEFAULT_SETTINGS);
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : 'AICamouflage must be opened from the installed extension.',
+        );
+      });
+
+    return () => unwatch();
   }, []);
 
   const update = useCallback(async (patch: Partial<AppSettings>) => {
@@ -103,14 +118,23 @@ export function PopupApp() {
 
       <section className="panel">
         <h2>On-device WebLLM</h2>
-        <p className="muted">
-          Loads a small local model in the extension service worker. The first download can take
-          several minutes.
-        </p>
-        <p className="model">{settings.modelId}</p>
-        <button type="button" disabled={busy} onClick={() => void loadModel()}>
-          {busy ? 'Loading…' : settings.webllmEnabled ? 'Reload model' : 'Load model'}
-        </button>
+        {settings.webllmEnabled ? (
+          <div className="model-status" role="status">
+            <span className="muted">Downloaded model</span>
+            <strong className="model">{settings.modelId}</strong>
+          </div>
+        ) : (
+          <>
+            <p className="muted">
+              Loads a small local model in the extension service worker. The first download can
+              take several minutes.
+            </p>
+            <p className="model">{settings.modelId}</p>
+            <button type="button" disabled={busy} onClick={() => void loadModel()}>
+              {busy ? 'Loading…' : 'Download model'}
+            </button>
+          </>
+        )}
         {progress ? <p className="muted">{progress}</p> : null}
         {error ? <p className="error">{error}</p> : null}
       </section>
