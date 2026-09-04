@@ -1,6 +1,3 @@
-import { TextFieldOverlayManager } from '@/lib/overlay-manager';
-import { settingsStorage } from '@/lib/storage';
-
 export default defineContentScript({
   matches: ['<all_urls>'],
   allFrames: true,
@@ -10,60 +7,88 @@ export default defineContentScript({
       return;
     }
 
-    let logoUrl: string;
     try {
-      logoUrl = browser.runtime.getURL('/icons/icon32.png');
+      const [{ TextFieldOverlayManager }, { settingsStorage }] = await Promise.all([
+        import('@/lib/overlay-manager'),
+        import('@/lib/storage'),
+      ]);
+      const logoUrl = getExtensionUrl('/icons/icon32.png');
+      if (!logoUrl) {
+        return;
+      }
+
+      const overlay = new TextFieldOverlayManager(logoUrl);
+      overlay.start();
+      let unwatch = () => {};
+
+      const stop = () => {
+        unwatch();
+        overlay.stop();
+      };
+
+      const applySettings = async () => {
+        try {
+          const settings = await settingsStorage.getValue();
+          overlay.setEnabled(settings.overlaysEnabled);
+          overlay.setLogoSize(settings.logoSize);
+        } catch (cause) {
+          if (isExtensionContextInvalidated(cause)) {
+            stop();
+          } else {
+            throw cause;
+          }
+        }
+      };
+
+      await applySettings();
+      if (!hasExtensionContext()) {
+        stop();
+        return;
+      }
+
+      unwatch = settingsStorage.watch(() => {
+        void applySettings();
+      });
+
+      window.addEventListener('pagehide', () => {
+        stop();
+      });
     } catch (cause) {
       if (isExtensionContextInvalidated(cause)) {
         return;
       }
       throw cause;
     }
-    const overlay = new TextFieldOverlayManager(logoUrl);
-    overlay.start();
-    let unwatch = () => {};
-
-    const stop = () => {
-      unwatch();
-      overlay.stop();
-    };
-
-    const applySettings = async () => {
-      try {
-        const settings = await settingsStorage.getValue();
-        overlay.setEnabled(settings.overlaysEnabled);
-        overlay.setLogoSize(settings.logoSize);
-      } catch (cause) {
-        if (isExtensionContextInvalidated(cause)) {
-          stop();
-        } else {
-          throw cause;
-        }
-      }
-    };
-
-    await applySettings();
-    if (!hasExtensionContext()) {
-      stop();
-      return;
-    }
-
-    unwatch = settingsStorage.watch(() => {
-      void applySettings();
-    });
-
-    window.addEventListener('pagehide', () => {
-      stop();
-    });
   },
 });
 
+type ChromeRuntime = {
+  id?: string;
+  getURL: (path: string) => string;
+};
+
 function hasExtensionContext(): boolean {
   try {
-    return Boolean(browser.runtime?.id);
+    return Boolean(getChromeRuntime()?.id);
   } catch {
     return false;
   }
+}
+
+function getExtensionUrl(path: string): string | null {
+  try {
+    const runtime = getChromeRuntime();
+    return runtime?.id ? runtime.getURL(path) : null;
+  } catch (cause) {
+    if (isExtensionContextInvalidated(cause)) {
+      return null;
+    }
+    throw cause;
+  }
+}
+
+function getChromeRuntime(): ChromeRuntime | undefined {
+  return (globalThis as typeof globalThis & { chrome?: { runtime?: ChromeRuntime } }).chrome?.runtime;
 }
 
 function isExtensionContextInvalidated(cause: unknown): boolean {

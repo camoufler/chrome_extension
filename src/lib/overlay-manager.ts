@@ -5,11 +5,12 @@ import { paraphraseText, stopParaphrasing } from './webllm';
 const HOST_ID = 'aicamouflage-overlay-host';
 
 interface FieldState {
+  controls: HTMLDivElement;
   button: HTMLButtonElement;
-  output: HTMLTextAreaElement;
-  applyButton: HTMLButtonElement;
+  revertButton: HTMLButtonElement;
   requestId: number;
   applying: boolean;
+  originalText: string | null;
   inputListener: () => void;
 }
 
@@ -89,7 +90,7 @@ export class TextFieldOverlayManager {
     for (const [field, marker] of this.markers) {
       if (!fields.has(field) || !field.isConnected) {
         marker.button.remove();
-        marker.output.remove();
+        marker.revertButton.remove();
         field.removeEventListener('input', marker.inputListener);
         this.markers.delete(field);
         this.resizeObserver.unobserve(field);
@@ -137,14 +138,32 @@ export class TextFieldOverlayManager {
         object-fit: contain;
         filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.45));
       }
-      .logo-button {
-        position: fixed;
-        display: block;
-        padding: 0;
+      .overlay-button {
+        display: flex;
+        box-sizing: border-box;
         border: 0;
         background: transparent;
         cursor: pointer;
         pointer-events: auto;
+        align-items: center;
+        justify-content: center;
+      }
+      .overlay-controls {
+        position: fixed;
+        display: flex;
+        box-sizing: border-box;
+        gap: 2px;
+        padding: 2px;
+        align-items: center;
+        border: 1px solid rgba(23, 32, 51, 0.28);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 1px 3px rgba(23, 32, 51, 0.2);
+        pointer-events: none;
+        transition: width 180ms ease;
+      }
+      .logo-button {
+        padding: 1px 4px;
       }
       .logo-button.loading {
         cursor: wait;
@@ -152,51 +171,40 @@ export class TextFieldOverlayManager {
       .logo-button.loading .logo {
         animation: aicamouflage-spin 1s linear infinite;
       }
-      .paraphrase-output {
-        position: fixed;
-        display: block;
-        min-height: 56px;
-        box-sizing: border-box;
-        padding: 8px;
-        border: 1px solid #7c8da6;
-        border-radius: 4px;
-        background: #fff;
-        color: #172033;
-        font: 13px/1.4 sans-serif;
-        resize: vertical;
-        pointer-events: auto;
-        user-select: text;
-      }
-      .apply-button {
-        position: fixed;
-        padding: 4px 8px;
-        border: 1px solid #7c8da6;
-        border-radius: 4px;
-        background: #fff;
+      .revert-button {
+        display: none;
+        padding: 1px 8px;
         color: #172033;
         font: 12px/1.2 sans-serif;
-        cursor: pointer;
-        pointer-events: auto;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(6px);
+        transition:
+          opacity 140ms ease,
+          transform 180ms ease,
+          visibility 0s linear 180ms;
       }
-      .apply-button:disabled {
-        cursor: default;
-        opacity: 0.65;
+      .overlay-controls.expanded .revert-button {
+        opacity: 1;
+        visibility: visible;
+        display: flex;
+        transform: translateX(0);
+        transition-delay: 40ms, 0ms, 0ms;
       }
-      .paraphrase-output.loading {
-        background: linear-gradient(90deg, #fff 25%, #e8edf5 50%, #fff 75%);
-        background-size: 200% 100%;
-        animation: aicamouflage-shimmer 1.4s ease-in-out infinite;
+      .overlay-controls.expanded .logo-button {
+        border-left: 1px solid rgba(23, 32, 51, 0.2);
+        padding-left: 6px;
       }
       @keyframes aicamouflage-spin {
         to { transform: rotate(360deg); }
       }
-      @keyframes aicamouflage-shimmer {
-        to { background-position: -200% 0; }
-      }
       @media (prefers-reduced-motion: reduce) {
-        .logo-button.loading .logo,
-        .paraphrase-output.loading {
+        .logo-button.loading .logo {
           animation: none;
+        }
+        .overlay-controls,
+        .revert-button {
+          transition: none;
         }
       }
     `;
@@ -217,7 +225,7 @@ export class TextFieldOverlayManager {
     }
 
     const button = document.createElement('button');
-    button.className = 'logo-button';
+    button.className = 'overlay-button logo-button';
     button.type = 'button';
     button.title = 'Paraphrase with AICamouflage';
     button.setAttribute('aria-label', 'Paraphrase text with AICamouflage');
@@ -230,47 +238,51 @@ export class TextFieldOverlayManager {
     marker.height = this.logoSize;
     button.append(marker);
 
-    const output = document.createElement('textarea');
-    output.className = 'paraphrase-output';
-    output.hidden = true;
-    output.readOnly = true;
-    output.wrap = 'off';
-    output.spellcheck = false;
-    output.setAttribute('aria-label', 'Paraphrased text');
+    const revertButton = document.createElement('button');
+    revertButton.className = 'overlay-button revert-button';
+    revertButton.type = 'button';
+    revertButton.textContent = 'Revert';
+    revertButton.title = 'Restore text before paraphrasing';
+    revertButton.setAttribute('aria-label', 'Restore text before paraphrasing');
 
-    const applyButton = document.createElement('button');
-    applyButton.className = 'apply-button';
-    applyButton.type = 'button';
-    applyButton.textContent = 'Apply';
-    applyButton.hidden = true;
-    applyButton.setAttribute('aria-label', 'Apply paraphrased text');
+    const controls = document.createElement('div');
+    controls.className = 'overlay-controls';
+    controls.append(revertButton, button);
 
     const state: FieldState = {
+      controls,
       button,
-      output,
-      applyButton,
+      revertButton,
       requestId: 0,
       applying: false,
+      originalText: null,
       inputListener: () => {
         if (state.applying) {
           state.applying = false;
           return;
         }
 
+        if (state.originalText !== null) {
+          state.originalText = null;
+          state.controls.classList.remove('expanded');
+        }
         this.cancelParaphrase(state);
       },
     };
     button.addEventListener('click', () => void this.paraphrase(field, state));
-    applyButton.addEventListener('click', () => {
+    revertButton.addEventListener('click', () => {
+      if (state.originalText === null) {
+        return;
+      }
+
+      const originalText = state.originalText;
+      state.originalText = null;
+      state.controls.classList.remove('expanded');
       state.applying = true;
-      applyOutput(field, output.value);
-      applyButton.textContent = 'Applied';
-      window.setTimeout(() => {
-        applyButton.textContent = 'Apply';
-      }, 1200);
+      applyOutput(field, originalText);
     });
     field.addEventListener('input', state.inputListener);
-    this.layer.append(button, output, applyButton);
+    this.layer.append(controls);
     this.markers.set(field, state);
     this.resizeObserver.observe(field);
   }
@@ -278,8 +290,7 @@ export class TextFieldOverlayManager {
   private clearMarkers(): void {
     for (const [field, marker] of this.markers) {
       marker.button.remove();
-      marker.output.remove();
-      marker.applyButton.remove();
+      marker.controls.remove();
       field.removeEventListener('input', marker.inputListener);
       this.resizeObserver.unobserve(field);
     }
@@ -300,10 +311,21 @@ export class TextFieldOverlayManager {
   private layout(): void {
     const size = this.logoSize;
     const inset = Math.max(4, Math.round(size / 5));
+    const buttonWidth = size + 12;
+    const buttonHeight = size + 6;
+    const revertWidth = 58;
+    const groupPadding = 4;
+    const buttonGap = 2;
 
     for (const [field, state] of this.markers) {
       const rect = field.getBoundingClientRect();
-      const fits = rect.width >= size + inset * 2 && rect.height >= size;
+      const revertVisible = state.originalText !== null;
+      const requiredWidth =
+        buttonWidth +
+        (revertVisible ? revertWidth + buttonGap : 0) +
+        groupPadding +
+        inset * 2;
+      const fits = rect.width >= requiredWidth && rect.height >= buttonHeight;
       const inViewport =
         rect.bottom > 0 &&
         rect.right > 0 &&
@@ -311,26 +333,22 @@ export class TextFieldOverlayManager {
         rect.left < window.innerWidth;
 
       if (!fits || !inViewport) {
-        state.button.style.display = 'none';
-        state.output.style.display = 'none';
-        state.applyButton.style.display = 'none';
+        state.controls.style.display = 'none';
         continue;
       }
 
-      state.button.style.display = 'block';
-      state.button.style.width = `${size}px`;
-      state.button.style.height = `${size}px`;
-      state.button.style.top = `${rect.top + (rect.height - size) / 2}px`;
-      state.button.style.left = `${rect.right - size - inset}px`;
-      state.output.style.display = state.output.hidden ? 'none' : 'block';
-      state.output.style.top = `${rect.bottom + 6}px`;
-      state.output.style.left = `${rect.left}px`;
-      state.output.style.width = `${rect.width}px`;
-      state.applyButton.hidden =
-        state.output.hidden || state.output.classList.contains('loading') || !state.output.value.trim();
-      state.applyButton.style.display = state.applyButton.hidden ? 'none' : 'block';
-      state.applyButton.style.top = `${rect.bottom + 6}px`;
-      state.applyButton.style.left = `${rect.right - 52}px`;
+      state.controls.style.display = 'flex';
+      state.controls.classList.toggle('expanded', revertVisible);
+      state.controls.style.width =
+        `${buttonWidth + (revertVisible ? revertWidth + buttonGap : 0) + groupPadding}px`;
+      state.controls.style.height = `${buttonHeight}px`;
+      state.controls.style.top = `${rect.bottom - buttonHeight - inset}px`;
+      state.controls.style.left =
+        `${rect.right - buttonWidth - inset - (revertVisible ? revertWidth + buttonGap : 0)}px`;
+      state.button.style.width = `${buttonWidth}px`;
+      state.button.style.height = `${buttonHeight}px`;
+      state.revertButton.style.width = `${revertWidth}px`;
+      state.revertButton.style.height = `${buttonHeight}px`;
     }
   }
 
@@ -341,9 +359,6 @@ export class TextFieldOverlayManager {
     }
 
     const requestId = ++state.requestId;
-    state.output.hidden = false;
-    state.output.value = 'Paraphrasing locally...';
-    state.output.classList.add('loading');
     state.button.classList.add('loading');
     state.button.disabled = true;
     state.button.setAttribute('aria-busy', 'true');
@@ -353,16 +368,19 @@ export class TextFieldOverlayManager {
       const settings = await settingsStorage.getValue();
       const result = await paraphraseText(text, settings.modelId);
       if (state.requestId === requestId) {
-        state.output.value = result;
-        state.applyButton.hidden = false;
+        state.originalText = text;
+        state.applying = true;
+        applyOutput(field, result);
+        state.controls.classList.add('expanded');
+        this.scheduleLayout();
       }
     } catch (cause) {
       if (state.requestId === requestId) {
-        state.output.value = cause instanceof Error ? cause.message : 'Unable to paraphrase text.';
+        const message = cause instanceof Error ? cause.message : 'Unable to paraphrase text.';
+        state.button.title = message;
       }
     } finally {
       if (state.requestId === requestId) {
-        state.output.classList.remove('loading');
         state.button.classList.remove('loading');
         state.button.disabled = false;
         state.button.removeAttribute('aria-busy');
@@ -373,10 +391,6 @@ export class TextFieldOverlayManager {
 
   private cancelParaphrase(state: FieldState): void {
     state.requestId += 1;
-    state.output.hidden = true;
-    state.output.value = '';
-    state.applyButton.hidden = true;
-    state.output.classList.remove('loading');
     state.button.classList.remove('loading');
     state.button.disabled = false;
     state.button.removeAttribute('aria-busy');
