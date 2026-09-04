@@ -31,8 +31,8 @@ export async function paraphraseText(text: string, modelId: string): Promise<str
 			{
 				role: 'system',
 				content:
-					'Generate personality and use it to paraphrase the user text. ' +
-					'You should maintain the original meaning while using your unique voice. ' +
+					'You are a text anonimysing proxy. Yoiur job is to remove PII information, you will also paraphase and replace user vocabilary and sentence signatures. ' +
+					'For example, if the user inputs "Hi my name is Vadim andf my email is vadim@example.com you will paraphase it as it is Vadim Email redacted"' +
                     'Return only the paraphrased text.',
 			},
 			{ role: 'user', content: text },

@@ -7,7 +7,9 @@ const HOST_ID = 'aicamouflage-overlay-host';
 interface FieldState {
   button: HTMLButtonElement;
   output: HTMLTextAreaElement;
+  applyButton: HTMLButtonElement;
   requestId: number;
+  applying: boolean;
   inputListener: () => void;
 }
 
@@ -163,6 +165,22 @@ export class TextFieldOverlayManager {
         font: 13px/1.4 sans-serif;
         resize: vertical;
         pointer-events: auto;
+        user-select: text;
+      }
+      .apply-button {
+        position: fixed;
+        padding: 4px 8px;
+        border: 1px solid #7c8da6;
+        border-radius: 4px;
+        background: #fff;
+        color: #172033;
+        font: 12px/1.2 sans-serif;
+        cursor: pointer;
+        pointer-events: auto;
+      }
+      .apply-button:disabled {
+        cursor: default;
+        opacity: 0.65;
       }
       .paraphrase-output.loading {
         background: linear-gradient(90deg, #fff 25%, #e8edf5 50%, #fff 75%);
@@ -216,17 +234,43 @@ export class TextFieldOverlayManager {
     output.className = 'paraphrase-output';
     output.hidden = true;
     output.readOnly = true;
+    output.wrap = 'off';
+    output.spellcheck = false;
     output.setAttribute('aria-label', 'Paraphrased text');
+
+    const applyButton = document.createElement('button');
+    applyButton.className = 'apply-button';
+    applyButton.type = 'button';
+    applyButton.textContent = 'Apply';
+    applyButton.hidden = true;
+    applyButton.setAttribute('aria-label', 'Apply paraphrased text');
 
     const state: FieldState = {
       button,
       output,
+      applyButton,
       requestId: 0,
-      inputListener: () => this.cancelParaphrase(state),
+      applying: false,
+      inputListener: () => {
+        if (state.applying) {
+          state.applying = false;
+          return;
+        }
+
+        this.cancelParaphrase(state);
+      },
     };
     button.addEventListener('click', () => void this.paraphrase(field, state));
+    applyButton.addEventListener('click', () => {
+      state.applying = true;
+      applyOutput(field, output.value);
+      applyButton.textContent = 'Applied';
+      window.setTimeout(() => {
+        applyButton.textContent = 'Apply';
+      }, 1200);
+    });
     field.addEventListener('input', state.inputListener);
-    this.layer.append(button, output);
+    this.layer.append(button, output, applyButton);
     this.markers.set(field, state);
     this.resizeObserver.observe(field);
   }
@@ -235,6 +279,7 @@ export class TextFieldOverlayManager {
     for (const [field, marker] of this.markers) {
       marker.button.remove();
       marker.output.remove();
+      marker.applyButton.remove();
       field.removeEventListener('input', marker.inputListener);
       this.resizeObserver.unobserve(field);
     }
@@ -268,6 +313,7 @@ export class TextFieldOverlayManager {
       if (!fits || !inViewport) {
         state.button.style.display = 'none';
         state.output.style.display = 'none';
+        state.applyButton.style.display = 'none';
         continue;
       }
 
@@ -280,6 +326,11 @@ export class TextFieldOverlayManager {
       state.output.style.top = `${rect.bottom + 6}px`;
       state.output.style.left = `${rect.left}px`;
       state.output.style.width = `${rect.width}px`;
+      state.applyButton.hidden =
+        state.output.hidden || state.output.classList.contains('loading') || !state.output.value.trim();
+      state.applyButton.style.display = state.applyButton.hidden ? 'none' : 'block';
+      state.applyButton.style.top = `${rect.bottom + 6}px`;
+      state.applyButton.style.left = `${rect.right - 52}px`;
     }
   }
 
@@ -303,6 +354,7 @@ export class TextFieldOverlayManager {
       const result = await paraphraseText(text, settings.modelId);
       if (state.requestId === requestId) {
         state.output.value = result;
+        state.applyButton.hidden = false;
       }
     } catch (cause) {
       if (state.requestId === requestId) {
@@ -314,6 +366,7 @@ export class TextFieldOverlayManager {
         state.button.classList.remove('loading');
         state.button.disabled = false;
         state.button.removeAttribute('aria-busy');
+        this.scheduleLayout();
       }
     }
   }
@@ -322,12 +375,27 @@ export class TextFieldOverlayManager {
     state.requestId += 1;
     state.output.hidden = true;
     state.output.value = '';
+    state.applyButton.hidden = true;
     state.output.classList.remove('loading');
     state.button.classList.remove('loading');
     state.button.disabled = false;
     state.button.removeAttribute('aria-busy');
     void stopParaphrasing();
   }
+}
+
+function applyOutput(field: HTMLElement, text: string): void {
+  if (field instanceof HTMLInputElement) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(field, text);
+  } else if (field instanceof HTMLTextAreaElement) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+    setter?.call(field, text);
+  } else {
+    field.textContent = text;
+  }
+
+  field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
 }
 
 function getFieldText(field: HTMLElement): string {
