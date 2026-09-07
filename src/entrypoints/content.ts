@@ -18,7 +18,7 @@ export default defineContentScript({
       }
 
       const overlay = new TextFieldOverlayManager(logoUrl);
-      overlay.start();
+      await overlay.start();
       let unwatch = () => {};
 
       const stop = () => {

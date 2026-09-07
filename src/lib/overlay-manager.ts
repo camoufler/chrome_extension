@@ -1,4 +1,5 @@
-import { settingsStorage } from './storage';
+import { overlayPositionsStorage, settingsStorage } from './storage';
+import type { OverlayPosition, OverlayPositions } from './settings';
 import { collectTextFields } from './text-fields';
 import { paraphraseText, stopParaphrasing } from './webllm';
 
@@ -8,10 +9,22 @@ interface FieldState {
   controls: HTMLDivElement;
   button: HTMLButtonElement;
   revertButton: HTMLButtonElement;
+  positionKey: string;
   requestId: number;
   applying: boolean;
   originalText: string | null;
   inputListener: () => void;
+  drag: DragState | null;
+  suppressClick: boolean;
+}
+
+interface DragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  left: number;
+  top: number;
+  moved: boolean;
 }
 
 export class TextFieldOverlayManager {
@@ -24,6 +37,8 @@ export class TextFieldOverlayManager {
   private enabled = true;
   private logoSize = 18;
   private frame = 0;
+  private pageKey = getPageKey();
+  private positions: OverlayPositions = {};
 
   constructor(logoUrl: string) {
     this.logoUrl = logoUrl;
@@ -33,11 +48,13 @@ export class TextFieldOverlayManager {
         return;
       }
 
+      this.keepHostOnTop();
       this.scan();
     });
   }
 
-  start(): void {
+  async start(): Promise<void> {
+    this.positions = await overlayPositionsStorage.getValue();
     this.ensureHost();
     this.mutationObserver.observe(document.documentElement, {
       childList: true,
@@ -86,9 +103,10 @@ export class TextFieldOverlayManager {
       return;
     }
 
-    const fields = new Set(collectTextFields());
+    const fields = collectTextFields();
+    const fieldSet = new Set(fields);
     for (const [field, marker] of this.markers) {
-      if (!fields.has(field) || !field.isConnected) {
+      if (!fieldSet.has(field) || !field.isConnected) {
         marker.button.remove();
         marker.revertButton.remove();
         field.removeEventListener('input', marker.inputListener);
@@ -97,11 +115,11 @@ export class TextFieldOverlayManager {
       }
     }
 
-    for (const field of fields) {
+    fields.forEach((field, index) => {
       if (!this.markers.has(field)) {
-        this.attachMarker(field);
+        this.attachMarker(field, getFieldKey(field, index));
       }
-    }
+    });
 
     this.scheduleLayout();
   }
@@ -153,17 +171,36 @@ export class TextFieldOverlayManager {
         display: flex;
         box-sizing: border-box;
         gap: 2px;
-        padding: 2px;
+        padding: 5px;
         align-items: center;
         border: 1px solid rgba(23, 32, 51, 0.28);
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.94);
         box-shadow: 0 1px 3px rgba(23, 32, 51, 0.2);
-        pointer-events: none;
-        transition: width 180ms ease;
+        cursor: grab;
+        pointer-events: auto;
+        touch-action: none;
+        transition:
+          width 180ms ease,
+          left 180ms ease;
+      }
+      .overlay-controls.dragging {
+        cursor: grabbing;
       }
       .logo-button {
         padding: 1px 4px;
+      }
+      .overlay-controls.expanded .logo-button {
+        position: relative;
+      }
+      .overlay-controls.expanded .logo-button::before {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: -2px;
+        width: 1px;
+        background: rgba(23, 32, 51, 0.2);
+        content: '';
       }
       .logo-button.loading {
         cursor: wait;
@@ -191,10 +228,6 @@ export class TextFieldOverlayManager {
         transform: translateX(0);
         transition-delay: 40ms, 0ms, 0ms;
       }
-      .overlay-controls.expanded .logo-button {
-        border-left: 1px solid rgba(23, 32, 51, 0.2);
-        padding-left: 6px;
-      }
       @keyframes aicamouflage-spin {
         to { transform: rotate(360deg); }
       }
@@ -218,7 +251,13 @@ export class TextFieldOverlayManager {
     this.layer = layer;
   }
 
-  private attachMarker(field: HTMLElement): void {
+  private keepHostOnTop(): void {
+    if (this.host && document.documentElement.lastElementChild !== this.host) {
+      document.documentElement.append(this.host);
+    }
+  }
+
+  private attachMarker(field: HTMLElement, positionKey: string): void {
     this.ensureHost();
     if (!this.layer) {
       return;
@@ -253,9 +292,12 @@ export class TextFieldOverlayManager {
       controls,
       button,
       revertButton,
+      positionKey,
       requestId: 0,
       applying: false,
       originalText: null,
+      drag: null,
+      suppressClick: false,
       inputListener: () => {
         if (state.applying) {
           state.applying = false;
@@ -269,7 +311,23 @@ export class TextFieldOverlayManager {
         this.cancelParaphrase(state);
       },
     };
-    button.addEventListener('click', () => void this.paraphrase(field, state));
+    button.addEventListener('click', (event) => {
+      if (state.suppressClick) {
+        state.suppressClick = false;
+        event.preventDefault();
+        return;
+      }
+
+      void this.paraphrase(field, state);
+    });
+    controls.addEventListener('pointerdown', (event) => {
+      if (event.target === controls) {
+        this.startDrag(state, event);
+      }
+    });
+    controls.addEventListener('pointermove', (event) => this.moveDrag(state, event));
+    controls.addEventListener('pointerup', (event) => this.endDrag(field, state, event));
+    controls.addEventListener('pointercancel', (event) => this.endDrag(field, state, event));
     revertButton.addEventListener('click', () => {
       if (state.originalText === null) {
         return;
@@ -314,7 +372,7 @@ export class TextFieldOverlayManager {
     const buttonWidth = size + 12;
     const buttonHeight = size + 6;
     const revertWidth = 58;
-    const groupPadding = 4;
+    const groupPadding = 10;
     const buttonGap = 2;
 
     for (const [field, state] of this.markers) {
@@ -337,19 +395,101 @@ export class TextFieldOverlayManager {
         continue;
       }
 
+      if (state.drag) {
+        continue;
+      }
+
       state.controls.style.display = 'flex';
       state.controls.classList.toggle('expanded', revertVisible);
       state.controls.style.width =
-        `${buttonWidth + (revertVisible ? revertWidth + buttonGap : 0) + groupPadding}px`;
-      state.controls.style.height = `${buttonHeight}px`;
-      state.controls.style.top = `${rect.bottom - buttonHeight - inset}px`;
-      state.controls.style.left =
-        `${rect.right - buttonWidth - inset - (revertVisible ? revertWidth + buttonGap : 0)}px`;
+        `${buttonWidth + (revertVisible ? revertWidth + buttonGap : 0) + groupPadding + 2}px`;
+      state.controls.style.height = `${buttonHeight + groupPadding + 2}px`;
+      const defaultRight = inset;
+      const defaultBottom = inset;
+      const position = this.positions[this.pageKey]?.[state.positionKey];
+      const right = position?.right ?? defaultRight;
+      const bottom = position?.bottom ?? defaultBottom;
+      const controlEdgeInset = groupPadding / 2 + 1;
+      state.controls.style.top = '';
+      state.controls.style.left = '';
+      state.controls.style.right =
+        `${window.innerWidth - (rect.right - right + controlEdgeInset)}px`;
+      state.controls.style.bottom =
+        `${window.innerHeight - (rect.bottom - bottom + controlEdgeInset)}px`;
       state.button.style.width = `${buttonWidth}px`;
       state.button.style.height = `${buttonHeight}px`;
       state.revertButton.style.width = `${revertWidth}px`;
       state.revertButton.style.height = `${buttonHeight}px`;
     }
+  }
+
+  private startDrag(state: FieldState, event: PointerEvent): void {
+    const rect = state.controls.getBoundingClientRect();
+    state.drag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      left: rect.left,
+      top: rect.top,
+      moved: false,
+    };
+    state.controls.classList.add('dragging');
+    state.controls.setPointerCapture(event.pointerId);
+  }
+
+  private moveDrag(state: FieldState, event: PointerEvent): void {
+    const drag = state.drag;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < 4) {
+      return;
+    }
+
+    drag.moved = true;
+    state.controls.style.left = `${drag.left + deltaX}px`;
+    state.controls.style.top = `${drag.top + deltaY}px`;
+    event.preventDefault();
+  }
+
+  private endDrag(field: HTMLElement, state: FieldState, event: PointerEvent): void {
+    const drag = state.drag;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    state.drag = null;
+    state.controls.classList.remove('dragging');
+    if (state.controls.hasPointerCapture(event.pointerId)) {
+      state.controls.releasePointerCapture(event.pointerId);
+    }
+
+    if (drag.moved) {
+      const fieldRect = field.getBoundingClientRect();
+      const buttonRect = state.button.getBoundingClientRect();
+      const position = {
+        right: fieldRect.right - buttonRect.right,
+        bottom: fieldRect.bottom - buttonRect.bottom,
+      };
+      this.savePosition(state.positionKey, position);
+      state.suppressClick = true;
+      event.preventDefault();
+    }
+  }
+
+  private async savePosition(positionKey: string, position: OverlayPosition): Promise<void> {
+    const cachedPagePositions = this.positions[this.pageKey] ?? {};
+    cachedPagePositions[positionKey] = position;
+    this.positions[this.pageKey] = cachedPagePositions;
+
+    const positions = await overlayPositionsStorage.getValue();
+    const storedPagePositions = positions[this.pageKey] ?? {};
+    storedPagePositions[positionKey] = position;
+    positions[this.pageKey] = storedPagePositions;
+    await overlayPositionsStorage.setValue(positions);
   }
 
   private async paraphrase(field: HTMLElement, state: FieldState): Promise<void> {
@@ -376,6 +516,11 @@ export class TextFieldOverlayManager {
       }
     } catch (cause) {
       if (state.requestId === requestId) {
+        if (isExtensionContextInvalidated(cause)) {
+          this.stop();
+          return;
+        }
+
         const message = cause instanceof Error ? cause.message : 'Unable to paraphrase text.';
         state.button.title = message;
       }
@@ -418,4 +563,30 @@ function getFieldText(field: HTMLElement): string {
   }
 
   return field.textContent ?? '';
+}
+
+function getPageKey(): string {
+  try {
+    const url = new URL(location.href);
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return location.href.split('#')[0] ?? location.href;
+  }
+}
+
+function getFieldKey(field: HTMLElement, index: number): string {
+  const identifyingAttribute = ['id', 'name', 'aria-label', 'placeholder', 'data-placeholder']
+    .map((attribute) => [attribute, field.getAttribute(attribute)] as const)
+    .find(([, value]) => value?.trim());
+
+  if (identifyingAttribute) {
+    return `${field.tagName.toLowerCase()}:${identifyingAttribute[0]}:${identifyingAttribute[1]}`;
+  }
+
+  return `${field.tagName.toLowerCase()}:index:${index}`;
+}
+
+function isExtensionContextInvalidated(cause: unknown): boolean {
+  return cause instanceof Error && cause.message.includes('Extension context invalidated');
 }

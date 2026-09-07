@@ -7,6 +7,13 @@ export interface AppSettings {
   modelId: string;
 }
 
+export interface OverlayPosition {
+  right: number;
+  bottom: number;
+}
+
+export type OverlayPositions = Record<string, Record<string, OverlayPosition>>;
+
 export const DEFAULT_SETTINGS: AppSettings = {
   overlaysEnabled: true,
   logoSize: 18,

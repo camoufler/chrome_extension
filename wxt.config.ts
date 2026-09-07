@@ -16,7 +16,7 @@ export default defineConfig({
     host_permissions: ['<all_urls>'],
     web_accessible_resources: [
       {
-        resources: ['icons/*'],
+        resources: ['icons/*', 'prompts/standard.json'],
         matches: ['<all_urls>'],
       },
     ],
@@ -41,6 +41,9 @@ export default defineConfig({
     },
   },
   vite: () => ({
+    build: {
+      chunkSizeWarningLimit: 7000,
+    },
     optimizeDeps: {
       exclude: ['@mlc-ai/web-llm'],
     },
