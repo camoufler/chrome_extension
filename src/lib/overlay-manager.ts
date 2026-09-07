@@ -266,8 +266,8 @@ export class TextFieldOverlayManager {
     const button = document.createElement('button');
     button.className = 'overlay-button logo-button';
     button.type = 'button';
-    button.title = 'Paraphrase with AICamouflage';
-    button.setAttribute('aria-label', 'Paraphrase text with AICamouflage');
+    button.title = 'Paraphrase with Camoufler';
+    button.setAttribute('aria-label', 'Paraphrase text with Camoufler');
 
     const marker = document.createElement('img');
     marker.className = 'logo';

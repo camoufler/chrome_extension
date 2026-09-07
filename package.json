@@ -1,6 +1,6 @@
 {
-  "name": "aicamouflage",
-  "description": "Chrome extension that marks text fields with the AICamouflage logo and runs on-device WebLLM.",
+  "name": "camoufler",
+  "description": "Chrome extension that marks text fields with the Camoufler logo and runs on-device WebLLM.",
   "private": true,
   "version": "1.0.0",
   "type": "module",

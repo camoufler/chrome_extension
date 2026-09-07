@@ -1,4 +1,4 @@
-# Camouflage 
+# Camoufler
 
 Chrome Manifest V3 extension built with **WXT**, **Vite**, **React**, and **TypeScript**. It scans the active tab for text fields and draws the extension logo on the right side of each one. Optional on-device inference uses **WebLLM**. Settings persist in **Chrome Storage**.
 

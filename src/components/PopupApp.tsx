@@ -34,7 +34,7 @@ export function PopupApp() {
         setError(
           cause instanceof Error
             ? cause.message
-            : 'AICamouflage must be opened from the installed extension.',
+            : 'Camoufler must be opened from the installed extension.',
         );
       });
 
@@ -85,7 +85,7 @@ export function PopupApp() {
       <header className="header">
         <img src="/icons/icon48.png" width={32} height={32} alt="" />
         <div>
-          <h1>AICamouflage</h1>
+          <h1>Camoufler</h1>
           <p className="muted">Marks text fields on the active tab.</p>
         </div>
       </header>

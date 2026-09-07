@@ -9,9 +9,9 @@ export default defineConfig({
     },
   },
   manifest: {
-    name: 'AICamouflage',
+    name: 'Camoufler',
     description:
-      'Scan the active tab for text fields and mark them with the AICamouflage logo.',
+      'Scan the active tab for text fields and mark them with the Camoufler logo.',
     permissions: ['storage', 'activeTab'],
     host_permissions: ['<all_urls>'],
     web_accessible_resources: [
@@ -31,7 +31,7 @@ export default defineConfig({
       128: '/icons/icon128.png',
     },
     action: {
-      default_title: 'AICamouflage',
+      default_title: 'Camoufler',
       default_icon: {
         16: '/icons/icon16.png',
         32: '/icons/icon32.png',
