@@ -97,13 +97,9 @@ export function PopupApp() {
         <img src="/icons/Camoufler.svg" width={32} height={32} alt="" />
         <div>
           <h1>Camoufler</h1>
-          <p className="muted">Your digital camouflage in this world.</p>
+          <p className="muted">Your camouflage in AI world.</p>
         </div>
       </header>
-
-      <label className="row">
-        <span>Our goal is to make your footprints less personalized to <b>AI</b> systems.</span>
-      </label>
 
       <label className="row">
         <span>Show overlays</span>
@@ -117,8 +113,8 @@ export function PopupApp() {
       </label>
 
       <section className="panel">
-        <h2>Local hosted LLM</h2>
-        <p className="muted">We run a local LLM locally to keep your inputs <b>private</b>.</p>
+        <h3>Local hosted LLM</h3>
+        <p className="muted">We run LLM's locally to keep your inputs private.</p>
         {settings.webllmEnabled ? (
           <div className="model-status" role="status">
             <span className="model">Current model: {settings.modelName}</span>
