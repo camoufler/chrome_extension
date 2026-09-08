@@ -12,7 +12,7 @@ export default defineContentScript({
         import('@/lib/overlay-manager'),
         import('@/lib/storage'),
       ]);
-      const logoUrl = getExtensionUrl('/icons/icon32.png');
+      const logoUrl = getExtensionUrl('/icons/Camoufler.svg');
       if (!logoUrl) {
         return;
       }

@@ -83,7 +83,7 @@ export function PopupApp() {
   return (
     <main className="popup">
       <header className="header">
-        <img src="/icons/icon48.png" width={32} height={32} alt="" />
+        <img src="/icons/Camoufler.svg" width={32} height={32} alt="" />
         <div>
           <h1>Camoufler</h1>
           <p className="muted">Marks text fields on the active tab.</p>
