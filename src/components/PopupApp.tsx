@@ -7,9 +7,12 @@ import {
   MAX_LOGO_SIZE,
   MIN_LOGO_SIZE,
   DEFAULT_SETTINGS,
+  normalizeSettings,
   type AppSettings,
 } from '@/lib/settings';
+import { BUNDLED_MODEL_ID, getBundledEngineConfig } from '@/lib/model';
 import { settingsStorage } from '@/lib/storage';
+import { debug } from '@/lib/debug';
 import './PopupApp.css';
 
 export function PopupApp() {
@@ -23,13 +26,21 @@ export function PopupApp() {
 
     void settingsStorage
       .getValue()
-      .then((value) => {
-        setSettings(value);
+      .then(async (value) => {
+        const settings = normalizeSettings(value);
+        if (settings !== value) {
+          await settingsStorage.setValue(settings);
+        }
+        debug('popup: settings loaded', settings);
+        setSettings(settings);
         unwatch = settingsStorage.watch((nextValue) => {
-          setSettings(nextValue);
+          const nextSettings = normalizeSettings(nextValue);
+          debug('popup: settings changed', nextSettings);
+          setSettings(nextSettings);
         });
       })
       .catch((cause) => {
+        debug('popup: settings load failed', cause);
         setSettings(DEFAULT_SETTINGS);
         setError(
           cause instanceof Error
@@ -42,6 +53,7 @@ export function PopupApp() {
   }, []);
 
   const update = useCallback(async (patch: Partial<AppSettings>) => {
+    debug('popup: update', patch);
     const current = await settingsStorage.getValue();
     await settingsStorage.setValue({ ...current, ...patch });
   }, []);
@@ -51,20 +63,25 @@ export function PopupApp() {
       return;
     }
 
+    debug('popup: loadModel start', settings.modelId);
     setBusy(true);
     setError('');
     setProgress('Connecting to the extension service worker…');
 
     try {
-      await CreateExtensionServiceWorkerMLCEngine(settings.modelId, {
-        initProgressCallback: (report: InitProgressReport) => {
+      await CreateExtensionServiceWorkerMLCEngine(
+        BUNDLED_MODEL_ID,
+        getBundledEngineConfig((report: InitProgressReport) => {
+          debug('popup: loadModel progress', report.text);
           setProgress(report.text);
-        },
-      });
-      await update({ webllmEnabled: true });
+        }),
+      );
+      await update({ webllmEnabled: true, modelId: BUNDLED_MODEL_ID });
+      debug('popup: loadModel ready', settings.modelId);
       setProgress('Model ready.');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Failed to load WebLLM.';
+      debug('popup: loadModel failed', message);
       setError(message);
       setProgress('');
     } finally {
@@ -120,18 +137,18 @@ export function PopupApp() {
         <h2>On-device WebLLM</h2>
         {settings.webllmEnabled ? (
           <div className="model-status" role="status">
-            <span className="muted">Downloaded model</span>
+            <span className="muted">Ready model</span>
             <strong className="model">{settings.modelId}</strong>
           </div>
         ) : (
           <>
             <p className="muted">
-              Loads a small local model in the extension service worker. The first download can
-              take several minutes.
+              Loads the bundled on-device model in the extension service worker. The first load
+              copies it onto the GPU.
             </p>
             <p className="model">{settings.modelId}</p>
             <button type="button" disabled={busy} onClick={() => void loadModel()}>
-              {busy ? 'Loading…' : 'Download model'}
+              {busy ? 'Loading…' : 'Load model'}
             </button>
           </>
         )}

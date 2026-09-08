@@ -1,3 +1,5 @@
+import { debug, debugVerbose } from './debug';
+import { BUNDLED_MODEL_ID } from './model';
 import { overlayPositionsStorage, settingsStorage } from './storage';
 import type { OverlayPosition, OverlayPositions } from './settings';
 import { collectTextFields } from './text-fields';
@@ -54,6 +56,7 @@ export class TextFieldOverlayManager {
   }
 
   async start(): Promise<void> {
+    debug('overlay: start', { pageKey: this.pageKey });
     this.positions = await overlayPositionsStorage.getValue();
     this.ensureHost();
     this.mutationObserver.observe(document.documentElement, {
@@ -71,6 +74,7 @@ export class TextFieldOverlayManager {
   }
 
   stop(): void {
+    debug('overlay: stop');
     this.mutationObserver.disconnect();
     document.removeEventListener('scroll', this.onViewportChange, true);
     window.removeEventListener('resize', this.onViewportChange);
@@ -83,6 +87,7 @@ export class TextFieldOverlayManager {
   }
 
   setEnabled(enabled: boolean): void {
+    debug('overlay: setEnabled', enabled);
     this.enabled = enabled;
     if (!enabled) {
       this.clearMarkers();
@@ -105,6 +110,8 @@ export class TextFieldOverlayManager {
 
     const fields = collectTextFields();
     const fieldSet = new Set(fields);
+    let removed = 0;
+    let attached = 0;
     for (const [field, marker] of this.markers) {
       if (!fieldSet.has(field) || !field.isConnected) {
         marker.button.remove();
@@ -112,14 +119,25 @@ export class TextFieldOverlayManager {
         field.removeEventListener('input', marker.inputListener);
         this.markers.delete(field);
         this.resizeObserver.unobserve(field);
+        removed += 1;
       }
     }
 
     fields.forEach((field, index) => {
       if (!this.markers.has(field)) {
         this.attachMarker(field, getFieldKey(field, index));
+        attached += 1;
       }
     });
+
+    if (attached || removed) {
+      debug('overlay: scan', {
+        fields: fields.length,
+        attached,
+        removed,
+        markers: this.markers.size,
+      });
+    }
 
     this.scheduleLayout();
   }
@@ -333,6 +351,7 @@ export class TextFieldOverlayManager {
         return;
       }
 
+      debug('overlay: revert', state.positionKey);
       const originalText = state.originalText;
       state.originalText = null;
       state.controls.classList.remove('expanded');
@@ -343,6 +362,7 @@ export class TextFieldOverlayManager {
     this.layer.append(controls);
     this.markers.set(field, state);
     this.resizeObserver.observe(field);
+    debug('overlay: attach', positionKey);
   }
 
   private clearMarkers(): void {
@@ -490,6 +510,7 @@ export class TextFieldOverlayManager {
     storedPagePositions[positionKey] = position;
     positions[this.pageKey] = storedPagePositions;
     await overlayPositionsStorage.setValue(positions);
+    debug('overlay: savePosition', { pageKey: this.pageKey, positionKey, position });
   }
 
   private async paraphrase(field: HTMLElement, state: FieldState): Promise<void> {
@@ -506,22 +527,35 @@ export class TextFieldOverlayManager {
 
     try {
       const settings = await settingsStorage.getValue();
-      const result = await paraphraseText(text, settings.modelId);
+      debug('overlay: paraphrase start', {
+        field: state.positionKey,
+        textLength: text.length,
+        modelId: BUNDLED_MODEL_ID,
+        storedModelId: settings.modelId,
+      });
+      debugVerbose('overlay: paraphrase input', text);
+      const result = await paraphraseText(text, BUNDLED_MODEL_ID);
       if (state.requestId === requestId) {
+        debug('overlay: paraphrase applied', { outputLength: result.length });
+        debugVerbose('overlay: paraphrase output', result);
         state.originalText = text;
         state.applying = true;
         applyOutput(field, result);
         state.controls.classList.add('expanded');
         this.scheduleLayout();
+      } else {
+        debug('overlay: paraphrase stale result dropped', { requestId, field: state.positionKey });
       }
     } catch (cause) {
       if (state.requestId === requestId) {
         if (isExtensionContextInvalidated(cause)) {
+          debug('overlay: paraphrase context invalidated');
           this.stop();
           return;
         }
 
         const message = cause instanceof Error ? cause.message : 'Unable to paraphrase text.';
+        debug('overlay: paraphrase failed', message);
         state.button.title = message;
       }
     } finally {
@@ -535,6 +569,7 @@ export class TextFieldOverlayManager {
   }
 
   private cancelParaphrase(state: FieldState): void {
+    debug('overlay: paraphrase cancelled', state.positionKey);
     state.requestId += 1;
     state.button.classList.remove('loading');
     state.button.disabled = false;
