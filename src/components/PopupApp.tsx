@@ -72,7 +72,7 @@ export function PopupApp() {
       );
       await update({ webllmEnabled: true, modelId: BUNDLED_MODEL_ID });
       debug('popup: loadModel ready', settings.modelId);
-      setProgress('Model ready.');
+      setProgress('');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Failed to load WebLLM.';
       debug('popup: loadModel failed', message);
@@ -97,12 +97,16 @@ export function PopupApp() {
         <img src="/icons/Camoufler.svg" width={32} height={32} alt="" />
         <div>
           <h1>Camoufler</h1>
-          <p className="muted">Marks text fields on the active tab.</p>
+          <p className="muted">Your digital camouflage in this world.</p>
         </div>
       </header>
 
       <label className="row">
-        <span>Show logo on text fields</span>
+        <span>Our goal is to make your footprints less personalized to <b>AI</b> systems.</span>
+      </label>
+
+      <label className="row">
+        <span>Show overlays</span>
         <input
           type="checkbox"
           checked={settings.overlaysEnabled}
@@ -113,11 +117,11 @@ export function PopupApp() {
       </label>
 
       <section className="panel">
-        <h2>On-device WebLLM</h2>
+        <h2>Local hosted LLM</h2>
+        <p className="muted">We run a local LLM locally to keep your inputs <b>private</b>.</p>
         {settings.webllmEnabled ? (
           <div className="model-status" role="status">
-            <span className="muted">Ready model</span>
-            <strong className="model">{settings.modelId}</strong>
+            <span className="model">Current model: {settings.modelName}</span>
           </div>
         ) : (
           <>
@@ -125,7 +129,7 @@ export function PopupApp() {
               Loads the bundled on-device model in the extension service worker. The first load
               copies it onto the GPU.
             </p>
-            <p className="model">{settings.modelId}</p>
+            <p className="model">Bundled model: {settings.modelName}</p>
             <button type="button" disabled={busy} onClick={() => void loadModel()}>
               {busy ? 'Loading…' : 'Load model'}
             </button>
