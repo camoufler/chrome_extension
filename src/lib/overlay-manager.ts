@@ -10,6 +10,7 @@ const HOST_ID = 'aicamouflage-overlay-host';
 interface FieldState {
   controls: HTMLDivElement;
   button: HTMLButtonElement;
+  logo: HTMLImageElement;
   revertButton: HTMLButtonElement;
   positionKey: string;
   requestId: number;
@@ -167,7 +168,25 @@ export class TextFieldOverlayManager {
       .logo {
         display: block;
         object-fit: contain;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-user-drag: none;
+        pointer-events: none;
         filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.45));
+      }
+      @keyframes camoufler-swing {
+        0% {
+          transform: rotate(-8deg) translateY(0px);
+          opacity: 0.8;
+        }
+        50% {
+          transform: rotate(8deg) translateY(-1px);
+          opacity: 1;
+        }
+        100% {
+          transform: rotate(-8deg) translateY(0px);
+          opacity: 0.8;
+        }
       }
       .overlay-button {
         display: flex;
@@ -178,6 +197,8 @@ export class TextFieldOverlayManager {
         pointer-events: auto;
         align-items: center;
         justify-content: center;
+        user-select: none;
+        -webkit-user-select: none;
       }
       .overlay-controls {
         position: fixed;
@@ -222,38 +243,26 @@ export class TextFieldOverlayManager {
         content: '';
       }
       .logo-button.loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: wait;
+        width: 18px;
+        height: 18px;
+        min-width: 18px;
+        min-height: 18px;
+      }
+      .logo-button.loading .logo {
+        display: block;
+        animation: camoufler-swing 0.8s ease-in-out infinite;
+        transform-origin: top center;
       }
       .logo-button.loading ~ .revert-button {
         display: none;
       }
       .overlay-controls:has(> .logo-button.loading) {
-        overflow: hidden;
         background: #e8efff;
         box-shadow: 0 2px 12px rgba(23, 32, 51, 0.22);
-      }
-      .overlay-controls:has(> .logo-button.loading)::before {
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-        border-radius: inherit;
-        background: linear-gradient(
-          90deg,
-          rgba(201, 216, 255, 0.1) 18%,
-          rgba(237, 243, 255, 0.72) 42%,
-          rgba(255, 255, 255, 0.95) 50%,
-          rgba(237, 243, 255, 0.72) 58%,
-          rgba(201, 216, 255, 0.1) 82%
-        );
-        background-size: 220% 100%;
-        background-position: 200% 0;
-        content: '';
-        animation: aicamouflage-shimmer 3s linear infinite;
-        pointer-events: none;
-      }
-      .overlay-controls:has(> .logo-button.loading) > * {
-        position: relative;
-        z-index: 1;
       }
       .revert-button {
         display: none;
@@ -274,17 +283,6 @@ export class TextFieldOverlayManager {
         display: flex;
         transform: translateX(0);
         transition-delay: 40ms, 0ms, 0ms;
-      }
-      @keyframes aicamouflage-shimmer {
-        0% {
-          background-position: 200% 0;
-        }
-        50% {
-          background-position: 50% 0;
-        }
-        100% {
-          background-position: -100% 0;
-        }
       }
       @media (prefers-reduced-motion: reduce) {
         .overlay-controls,
@@ -327,6 +325,7 @@ export class TextFieldOverlayManager {
     marker.src = this.logoUrl;
     marker.width = this.logoSize;
     marker.height = this.logoSize;
+
     button.append(marker);
 
     const revertButton = document.createElement('button');
@@ -343,6 +342,7 @@ export class TextFieldOverlayManager {
     const state: FieldState = {
       controls,
       button,
+      logo: marker,
       revertButton,
       positionKey,
       requestId: 0,
@@ -409,6 +409,25 @@ export class TextFieldOverlayManager {
       this.resizeObserver.unobserve(field);
     }
     this.markers.clear();
+  }
+
+  private async setLoadingState(state: FieldState, loading: boolean): Promise<void> {
+    if (loading) {
+      state.button.classList.add('loading');
+      state.button.style.width = '18px';
+      state.button.style.height = '18px';
+      state.button.style.minWidth = '18px';
+      state.button.style.minHeight = '18px';
+      state.logo.style.display = 'block';
+      return;
+    }
+
+    state.button.classList.remove('loading');
+    state.button.style.width = '';
+    state.button.style.height = '';
+    state.button.style.minWidth = '';
+    state.button.style.minHeight = '';
+    state.logo.style.display = 'block';
   }
 
   private scheduleLayout(): void {
@@ -489,6 +508,8 @@ export class TextFieldOverlayManager {
       top: rect.top,
       moved: false,
     };
+    state.controls.style.right = '';
+    state.controls.style.bottom = '';
     state.controls.classList.add('dragging');
     state.controls.setPointerCapture(event.pointerId);
   }
@@ -506,6 +527,8 @@ export class TextFieldOverlayManager {
     }
 
     drag.moved = true;
+    state.controls.style.right = '';
+    state.controls.style.bottom = '';
     state.controls.style.left = `${drag.left + deltaX}px`;
     state.controls.style.top = `${drag.top + deltaY}px`;
     event.preventDefault();
@@ -534,6 +557,8 @@ export class TextFieldOverlayManager {
       state.suppressClick = true;
       event.preventDefault();
     }
+
+    this.scheduleLayout();
   }
 
   private async savePosition(positionKey: string, position: OverlayPosition): Promise<void> {
@@ -556,7 +581,7 @@ export class TextFieldOverlayManager {
     }
 
     const requestId = ++state.requestId;
-    state.button.classList.add('loading');
+    await this.setLoadingState(state, true);
     state.button.disabled = true;
     state.button.setAttribute('aria-busy', 'true');
     this.scheduleLayout();
@@ -596,7 +621,7 @@ export class TextFieldOverlayManager {
       }
     } finally {
       if (state.requestId === requestId) {
-        state.button.classList.remove('loading');
+        await this.setLoadingState(state, false);
         state.button.disabled = false;
         state.button.removeAttribute('aria-busy');
         this.scheduleLayout();
@@ -607,7 +632,7 @@ export class TextFieldOverlayManager {
   private cancelParaphrase(state: FieldState): void {
     debug('overlay: paraphrase cancelled', state.positionKey);
     state.requestId += 1;
-    state.button.classList.remove('loading');
+    void this.setLoadingState(state, false);
     state.button.disabled = false;
     state.button.removeAttribute('aria-busy');
     state.controls.classList.remove('expanded');
