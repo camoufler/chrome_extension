@@ -195,10 +195,16 @@ export class TextFieldOverlayManager {
         touch-action: none;
         transition:
           width 180ms ease,
-          left 180ms ease;
+          left 180ms ease,
+          box-shadow 180ms ease,
+          transform 180ms ease,
+          background-color 180ms ease;
       }
       .overlay-controls.dragging {
         cursor: grabbing;
+      }
+      .logo-button.loading ~ .logo-button {
+        display: none;
       }
       .logo-button {
         padding: 1px 4px;
@@ -218,8 +224,36 @@ export class TextFieldOverlayManager {
       .logo-button.loading {
         cursor: wait;
       }
-      .logo-button.loading .logo {
-        animation: aicamouflage-spin 1s linear infinite;
+      .logo-button.loading ~ .revert-button {
+        display: none;
+      }
+      .overlay-controls:has(> .logo-button.loading) {
+        overflow: hidden;
+        background: #e8efff;
+        box-shadow: 0 2px 12px rgba(23, 32, 51, 0.22);
+      }
+      .overlay-controls:has(> .logo-button.loading)::before {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: inherit;
+        background: linear-gradient(
+          90deg,
+          rgba(201, 216, 255, 0.1) 18%,
+          rgba(237, 243, 255, 0.72) 42%,
+          rgba(255, 255, 255, 0.95) 50%,
+          rgba(237, 243, 255, 0.72) 58%,
+          rgba(201, 216, 255, 0.1) 82%
+        );
+        background-size: 220% 100%;
+        background-position: 200% 0;
+        content: '';
+        animation: aicamouflage-shimmer 3s linear infinite;
+        pointer-events: none;
+      }
+      .overlay-controls:has(> .logo-button.loading) > * {
+        position: relative;
+        z-index: 1;
       }
       .revert-button {
         display: none;
@@ -241,13 +275,18 @@ export class TextFieldOverlayManager {
         transform: translateX(0);
         transition-delay: 40ms, 0ms, 0ms;
       }
-      @keyframes aicamouflage-spin {
-        to { transform: rotate(360deg); }
+      @keyframes aicamouflage-shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        50% {
+          background-position: 50% 0;
+        }
+        100% {
+          background-position: -100% 0;
+        }
       }
       @media (prefers-reduced-motion: reduce) {
-        .logo-button.loading .logo {
-          animation: none;
-        }
         .overlay-controls,
         .revert-button {
           transition: none;
