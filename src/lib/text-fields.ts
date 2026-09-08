@@ -1,3 +1,5 @@
+import { DEBUG, debug, debugVerbose } from './debug';
+
 const TEXT_INPUT_TYPES = new Set([
   'text',
 ]);
@@ -83,58 +85,139 @@ function hasAiInputHint(element: HTMLElement): boolean {
   return false;
 }
 
-export function isEligibleTextField(element: Element): element is HTMLElement {
-  if (!(element instanceof HTMLElement) || element.dataset.aicamouflageIgnore === 'true') {
-    return false;
+type FieldEligibility =
+  | { eligible: true; element: HTMLElement }
+  | { eligible: false; reason: string };
+
+function getFieldEligibility(element: Element): FieldEligibility {
+  if (!(element instanceof HTMLElement)) {
+    return { eligible: false, reason: 'not-html' };
+  }
+
+  if (element.dataset.aicamouflageIgnore === 'true') {
+    return { eligible: false, reason: 'ignored' };
   }
 
   if (element instanceof HTMLInputElement) {
-    if (element.disabled || element.readOnly) {
-      return false;
+    if (element.disabled) {
+      return { eligible: false, reason: 'disabled' };
+    }
+
+    if (element.readOnly) {
+      return { eligible: false, reason: 'readonly' };
     }
 
     const type = element.type.toLowerCase();
-    if (SKIP_INPUT_TYPES.has(type) || isPasswordField(element)) {
-      return false;
+    if (SKIP_INPUT_TYPES.has(type)) {
+      return { eligible: false, reason: `skip-type:${type}` };
     }
 
-    return (
-      (TEXT_INPUT_TYPES.has(type) || type === '') &&
-      hasText(element.value) &&
-      hasAiInputHint(element) &&
-      isVisible(element)
-    );
+    if (isPasswordField(element)) {
+      return { eligible: false, reason: 'password' };
+    }
+
+    if (!(TEXT_INPUT_TYPES.has(type) || type === '')) {
+      return { eligible: false, reason: `not-text-type:${type}` };
+    }
+
+    if (!hasText(element.value)) {
+      return { eligible: false, reason: 'empty' };
+    }
+
+    if (!hasAiInputHint(element)) {
+      return { eligible: false, reason: 'no-ai-hint' };
+    }
+
+    if (!isVisible(element)) {
+      return { eligible: false, reason: 'not-visible' };
+    }
+
+    return { eligible: true, element };
   }
 
   if (element instanceof HTMLTextAreaElement) {
-    return (
-      !element.disabled &&
-      !element.readOnly &&
-      hasText(element.value) &&
-      hasAiInputHint(element) &&
-      isVisible(element)
-    );
+    if (element.disabled) {
+      return { eligible: false, reason: 'disabled' };
+    }
+
+    if (element.readOnly) {
+      return { eligible: false, reason: 'readonly' };
+    }
+
+    if (!hasText(element.value)) {
+      return { eligible: false, reason: 'empty' };
+    }
+
+    if (!hasAiInputHint(element)) {
+      return { eligible: false, reason: 'no-ai-hint' };
+    }
+
+    if (!isVisible(element)) {
+      return { eligible: false, reason: 'not-visible' };
+    }
+
+    return { eligible: true, element };
   }
 
   if (element.isContentEditable) {
     const parentEditable = element.parentElement?.closest('[contenteditable="true"]');
     if (parentEditable) {
-      return false;
+      return { eligible: false, reason: 'nested-contenteditable' };
     }
 
-    return hasText(element.textContent) && hasAiInputHint(element) && isVisible(element);
+    if (!hasText(element.textContent)) {
+      return { eligible: false, reason: 'empty' };
+    }
+
+    if (!hasAiInputHint(element)) {
+      return { eligible: false, reason: 'no-ai-hint' };
+    }
+
+    if (!isVisible(element)) {
+      return { eligible: false, reason: 'not-visible' };
+    }
+
+    return { eligible: true, element };
   }
 
   if (element.getAttribute('role') === 'textbox') {
-    return (
-      !isPasswordField(element) &&
-      hasText(element.textContent) &&
-      hasAiInputHint(element) &&
-      isVisible(element)
-    );
+    if (isPasswordField(element)) {
+      return { eligible: false, reason: 'password' };
+    }
+
+    if (!hasText(element.textContent)) {
+      return { eligible: false, reason: 'empty' };
+    }
+
+    if (!hasAiInputHint(element)) {
+      return { eligible: false, reason: 'no-ai-hint' };
+    }
+
+    if (!isVisible(element)) {
+      return { eligible: false, reason: 'not-visible' };
+    }
+
+    return { eligible: true, element };
   }
 
-  return false;
+  return { eligible: false, reason: 'not-field' };
+}
+
+function describeField(element: Element): string {
+  if (!(element instanceof HTMLElement)) {
+    return element.nodeName.toLowerCase();
+  }
+
+  const name = element.getAttribute('name');
+  return [
+    element.tagName.toLowerCase(),
+    element.id ? `#${element.id}` : '',
+    name ? `[name=${name}]` : '',
+  ].join('');
+}
+
+export function isEligibleTextField(element: Element): element is HTMLElement {
+  return getFieldEligibility(element).eligible;
 }
 
 const FIELD_SELECTOR = [
@@ -145,13 +228,39 @@ const FIELD_SELECTOR = [
   '[role="textbox"]',
 ].join(',');
 
+let lastCollectSummary = '';
+
 export function collectTextFields(root: ParentNode = document): HTMLElement[] {
   const nodes = root.querySelectorAll(FIELD_SELECTOR);
   const fields: HTMLElement[] = [];
+  const skipped: Record<string, number> = {};
 
   for (const node of nodes) {
-    if (isEligibleTextField(node)) {
-      fields.push(node);
+    const result = getFieldEligibility(node);
+    if (result.eligible) {
+      fields.push(result.element);
+      continue;
+    }
+
+    if (DEBUG) {
+      skipped[result.reason] = (skipped[result.reason] ?? 0) + 1;
+      debugVerbose('field skipped', describeField(node), result.reason);
+    }
+  }
+
+  if (DEBUG) {
+    const summary = JSON.stringify({
+      queried: nodes.length,
+      eligible: fields.length,
+      skipped,
+    });
+    if (summary !== lastCollectSummary) {
+      lastCollectSummary = summary;
+      debug('collectTextFields', {
+        queried: nodes.length,
+        eligible: fields.length,
+        skipped,
+      });
     }
   }
 

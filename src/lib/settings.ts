@@ -1,4 +1,4 @@
-export const DEFAULT_MODEL_ID = 'SmolLM2-1.7B-Instruct-q4f16_1-MLC';
+export const DEFAULT_MODEL_ID = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
 
 export interface AppSettings {
   overlaysEnabled: boolean;
@@ -23,3 +23,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 export const MIN_LOGO_SIZE = 12;
 export const MAX_LOGO_SIZE = 28;
+
+export function normalizeSettings(settings: AppSettings): AppSettings {
+  if (settings.modelId === DEFAULT_MODEL_ID) {
+    return settings;
+  }
+
+  return {
+    ...settings,
+    modelId: DEFAULT_MODEL_ID,
+    webllmEnabled: false,
+  };
+}

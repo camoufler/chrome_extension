@@ -1,39 +1,56 @@
+import { debug } from '@/lib/debug';
+
 export default defineContentScript({
   matches: ['<all_urls>'],
   allFrames: true,
   runAt: 'document_idle',
   async main() {
     if (!hasExtensionContext()) {
+      debug('content: skip, no extension context');
       return;
     }
 
     try {
-      const [{ TextFieldOverlayManager }, { settingsStorage }] = await Promise.all([
-        import('@/lib/overlay-manager'),
-        import('@/lib/storage'),
-      ]);
+      const [{ TextFieldOverlayManager }, { settingsStorage }, { normalizeSettings }] =
+        await Promise.all([
+          import('@/lib/overlay-manager'),
+          import('@/lib/storage'),
+          import('@/lib/settings'),
+        ]);
       const logoUrl = getExtensionUrl('/icons/icon32.png');
       if (!logoUrl) {
+        debug('content: skip, no logo url');
         return;
       }
 
       const overlay = new TextFieldOverlayManager(logoUrl);
       await overlay.start();
+      debug('content: started', location.href);
       let unwatch = () => {};
 
-      const stop = () => {
+      const stop = (reason: string) => {
+        debug('content: stop', reason);
         unwatch();
         overlay.stop();
       };
 
       const applySettings = async () => {
         try {
-          const settings = await settingsStorage.getValue();
+          const stored = await settingsStorage.getValue();
+          const settings = normalizeSettings(stored);
+          if (settings !== stored) {
+            await settingsStorage.setValue(settings);
+          }
+          debug('content: apply settings', {
+            overlaysEnabled: settings.overlaysEnabled,
+            logoSize: settings.logoSize,
+            modelId: settings.modelId,
+          });
           overlay.setEnabled(settings.overlaysEnabled);
           overlay.setLogoSize(settings.logoSize);
         } catch (cause) {
           if (isExtensionContextInvalidated(cause)) {
-            stop();
+            stop('extension context invalidated');
           } else {
             throw cause;
           }
@@ -42,19 +59,21 @@ export default defineContentScript({
 
       await applySettings();
       if (!hasExtensionContext()) {
-        stop();
+        stop('extension context lost after settings');
         return;
       }
 
       unwatch = settingsStorage.watch(() => {
+        debug('content: settings changed');
         void applySettings();
       });
 
       window.addEventListener('pagehide', () => {
-        stop();
+        stop('pagehide');
       });
     } catch (cause) {
       if (isExtensionContextInvalidated(cause)) {
+        debug('content: extension context invalidated');
         return;
       }
       throw cause;

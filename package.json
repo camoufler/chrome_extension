@@ -9,9 +9,11 @@
   },
   "scripts": {
     "dev": "wxt",
+    "predev": "node scripts/download-bundled-model.mjs",
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
-    "prebuild": "node scripts/sync-standard-prompt.mjs",
+    "prebuild": "node scripts/sync-standard-prompt.mjs && node scripts/download-bundled-model.mjs",
+    "download:model": "node scripts/download-bundled-model.mjs",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",

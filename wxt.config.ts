@@ -12,7 +12,7 @@ export default defineConfig({
     name: 'Camoufler',
     description:
       'Scan the active tab for text fields and mark them with the Camoufler logo.',
-    permissions: ['storage', 'activeTab'],
+    permissions: ['storage', 'unlimitedStorage', 'activeTab'],
     host_permissions: ['<all_urls>'],
     web_accessible_resources: [
       {
