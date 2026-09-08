@@ -135,26 +135,35 @@ async function completeRewrite(
 	userContent: string,
 ): Promise<string> {
 	await engine.resetChat();
-	const response = await engine.chat.completions.create({
-		messages: [
-			{
-				role: 'system',
-				content: systemPrompt,
-			},
-			{ role: 'user', content: userContent },
-		],
-		temperature: 0,
-		top_p: 0.9,
-		max_tokens: 512,
-	});
 
-	const content = response.choices[0]?.message.content;
-	if (typeof content !== 'string' || !content.trim()) {
-		debug('webllm: empty response');
-		throw new Error('The local model returned no paraphrased text.');
+	try {
+		const response = await engine.chat.completions.create({
+			messages: [
+				{
+					role: 'system',
+					content: systemPrompt,
+				},
+				{ role: 'user', content: userContent },
+			],
+			temperature: 0,
+			top_p: 0.9,
+			max_tokens: 512,
+		});
+
+		const content = response.choices[0]?.message.content;
+		if (typeof content !== 'string' || !content.trim()) {
+			debug('webllm: empty response');
+			throw new Error('The local model returned no paraphrased text.');
+		}
+
+		return content.trim();
+	} finally {
+		try {
+			await engine.resetChat();
+		} catch (cause) {
+			debug('webllm: reset after call failed', cause);
+		}
 	}
-
-	return content.trim();
 }
 
 function getExtensionUrl(path: string): string {
