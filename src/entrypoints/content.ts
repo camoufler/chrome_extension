@@ -17,7 +17,7 @@ export default defineContentScript({
           import('@/lib/storage'),
           import('@/lib/settings'),
         ]);
-      const logoUrl = getExtensionUrl('/icons/icon32.png');
+      const logoUrl = getExtensionUrl('/icons/Camoufler.svg');
       if (!logoUrl) {
         debug('content: skip, no logo url');
         return;
@@ -43,11 +43,9 @@ export default defineContentScript({
           }
           debug('content: apply settings', {
             overlaysEnabled: settings.overlaysEnabled,
-            logoSize: settings.logoSize,
             modelId: settings.modelId,
           });
           overlay.setEnabled(settings.overlaysEnabled);
-          overlay.setLogoSize(settings.logoSize);
         } catch (cause) {
           if (isExtensionContextInvalidated(cause)) {
             stop('extension context invalidated');

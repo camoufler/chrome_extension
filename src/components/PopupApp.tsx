@@ -3,13 +3,7 @@ import {
   type InitProgressReport,
 } from '@mlc-ai/web-llm';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  MAX_LOGO_SIZE,
-  MIN_LOGO_SIZE,
-  DEFAULT_SETTINGS,
-  normalizeSettings,
-  type AppSettings,
-} from '@/lib/settings';
+import { DEFAULT_SETTINGS, normalizeSettings, type AppSettings } from '@/lib/settings';
 import { BUNDLED_MODEL_ID, getBundledEngineConfig } from '@/lib/model';
 import { settingsStorage } from '@/lib/storage';
 import { debug } from '@/lib/debug';
@@ -114,21 +108,6 @@ export function PopupApp() {
           checked={settings.overlaysEnabled}
           onChange={(event) => {
             void update({ overlaysEnabled: event.target.checked });
-          }}
-        />
-      </label>
-
-      <label className="stack">
-        <span>
-          Logo size <strong>{settings.logoSize}px</strong>
-        </span>
-        <input
-          type="range"
-          min={MIN_LOGO_SIZE}
-          max={MAX_LOGO_SIZE}
-          value={settings.logoSize}
-          onChange={(event) => {
-            void update({ logoSize: Number(event.target.value) });
           }}
         />
       </label>

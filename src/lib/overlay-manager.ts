@@ -37,7 +37,7 @@ export class TextFieldOverlayManager {
   private host: HTMLDivElement | null = null;
   private layer: HTMLDivElement | null = null;
   private enabled = true;
-  private logoSize = 18;
+  private readonly logoSize = 18;
   private frame = 0;
   private pageKey = getPageKey();
   private positions: OverlayPositions = {};
@@ -95,11 +95,6 @@ export class TextFieldOverlayManager {
     }
 
     this.scan();
-  }
-
-  setLogoSize(size: number): void {
-    this.logoSize = size;
-    this.scheduleLayout();
   }
 
   scan(): void {
@@ -355,6 +350,8 @@ export class TextFieldOverlayManager {
       const originalText = state.originalText;
       state.originalText = null;
       state.controls.classList.remove('expanded');
+      this.cancelParaphrase(state);
+      this.scheduleLayout();
       state.applying = true;
       applyOutput(field, originalText);
     });
@@ -574,6 +571,8 @@ export class TextFieldOverlayManager {
     state.button.classList.remove('loading');
     state.button.disabled = false;
     state.button.removeAttribute('aria-busy');
+    state.controls.classList.remove('expanded');
+    this.scheduleLayout();
     void stopParaphrasing();
   }
 }
