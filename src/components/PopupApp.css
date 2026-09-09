@@ -1,12 +1,12 @@
 .popup {
   display: grid;
-  gap: 16px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .header {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -40,12 +40,37 @@
   align-items: stretch;
 }
 
+.mode-panel {
+  gap: 6px;
+}
+
+.mode-selection {
+  display: grid;
+  gap: 6px;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.mode-option input {
+  margin: 0;
+}
+
+.disabled-option {
+  opacity: 0.5;
+}
+
 .panel {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--panel);
 }
 

@@ -97,38 +97,78 @@ export function PopupApp() {
         <img src="/icons/Camoufler.svg" width={32} height={32} alt="" />
         <div>
           <h1>Camoufler</h1>
-          <p className="muted">Your camouflage in AI world.</p>
+          <p className="muted">
+            "Protect your data when using AI"
+          </p>
         </div>
       </header>
 
-      <label className="row">
-        <span>Show overlays</span>
-        <input
-          type="checkbox"
-          checked={settings.overlaysEnabled}
-          onChange={(event) => {
-            void update({ overlaysEnabled: event.target.checked });
-          }}
-        />
-      </label>
+      {settings.webllmEnabled ? (
+        <label className="row">
+          <span>Show Camoufler button</span>
+          <input
+            type="checkbox"
+            checked={settings.overlaysEnabled}
+            onChange={(event) => {
+              void update({ overlaysEnabled: event.target.checked });
+            }}
+          />
+        </label>
+      ) : null}
+
+      {settings.webllmEnabled ? (
+        <section className="panel">
+          <div className="mode-selection" role="radiogroup" aria-label="Output mode selection">
+            <label className="mode-option">
+              <input
+                type="radio"
+                name="modeSelection"
+                checked={settings.modeSelection === 'generalize'}
+                onChange={() => void update({ modeSelection: 'generalize' })}
+              />
+              <span>Protect my identity</span>
+            </label>
+
+            <label className="mode-option disabled-option">
+              <input
+                type="radio"
+                name="modeSelection"
+                checked={settings.modeSelection === 'removePpi'}
+                onChange={() => void update({ modeSelection: 'removePpi' })}
+                disabled
+              />
+              <span>Hide private information</span>
+            </label>
+
+            <label className="mode-option disabled-option">
+              <input
+                type="radio"
+                name="modeSelection"
+                checked={settings.modeSelection === 'both'}
+                onChange={() => void update({ modeSelection: 'both' })}
+                disabled
+              />
+              <span>Maximum protection</span>
+            </label>
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel">
-        <h3>Local hosted LLM</h3>
-        <p className="muted">We run LLM's locally to keep your inputs private.</p>
+        <h2>Your data stays on your device</h2>
+        <p className="muted">Camoufler uses a local AI model to protect your messages before they are sent to AI.</p>
         {settings.webllmEnabled ? (
           <div className="model-status" role="status">
             <span className="model">Current model: {settings.modelName}</span>
           </div>
         ) : (
           <>
-            <p className="muted">
-              Loads the bundled on-device model in the extension service worker. The first load
-              copies it onto the GPU.
-            </p>
-            <p className="model">Bundled model: {settings.modelName}</p>
+            <h4>Set up local protection to get started.</h4>
+            <p className="model">Model: {settings.modelName}</p>
             <button type="button" disabled={busy} onClick={() => void loadModel()}>
-              {busy ? 'Loading…' : 'Load model'}
+              {busy ? 'Loading…' : 'Load protection model'}
             </button>
+            <p className="muted">The model runs on your device. Your messages are not sent to a remote server for processing.</p>
           </>
         )}
         {progress ? <p className="muted">{progress}</p> : null}
