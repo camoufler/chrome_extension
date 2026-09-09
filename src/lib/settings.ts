@@ -1,4 +1,5 @@
-export const DEFAULT_MODEL_ID = 'SmolLM2-1.7B-Instruct-q4f16_1-MLC';
+export const DEFAULT_MODEL_ID = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+export const DEFAULT_MODEL_NAME = 'Qwen2.5-1.5B';
 
 export type ModeSelection = 'generalize' | 'removePpi' | 'both';
 
@@ -23,7 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   logoSize: 18,
   webllmEnabled: false,
   modelId: DEFAULT_MODEL_ID,
-  modelName: DEFAULT_MODEL_ID,
+  modelName: DEFAULT_MODEL_NAME,
   modeSelection: 'generalize',
 };
 

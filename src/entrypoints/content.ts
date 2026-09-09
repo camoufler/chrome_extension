@@ -41,11 +41,14 @@ export default defineContentScript({
           if (settings !== stored) {
             await settingsStorage.setValue(settings);
           }
+          const isReady = Boolean(settings.webllmEnabled) && Boolean(settings.modelId);
           debug('content: apply settings', {
             overlaysEnabled: settings.overlaysEnabled,
+            webllmEnabled: settings.webllmEnabled,
             modelId: settings.modelId,
+            isReady,
           });
-          overlay.setEnabled(settings.overlaysEnabled);
+          overlay.setEnabled(isReady && Boolean(settings.overlaysEnabled));
         } catch (cause) {
           if (isExtensionContextInvalidated(cause)) {
             stop('extension context invalidated');

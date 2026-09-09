@@ -3,7 +3,6 @@ import {
   type InitProgressReport,
 } from '@mlc-ai/web-llm';
 import { useCallback, useEffect, useState } from 'react';
-import packageJson from '../../package.json';
 import { DEFAULT_SETTINGS, normalizeSettings, type AppSettings } from '@/lib/settings';
 import { BUNDLED_MODEL_ID, getBundledEngineConfig } from '@/lib/model';
 import { settingsStorage } from '@/lib/storage';
@@ -104,70 +103,72 @@ export function PopupApp() {
         </div>
       </header>
 
-      <label className="row">
-        <span>Show Camoufler button</span>
-        <input
-          type="checkbox"
-          checked={settings.overlaysEnabled}
-          onChange={(event) => {
-            void update({ overlaysEnabled: event.target.checked });
-          }}
-        />
-      </label>
+      {settings.webllmEnabled ? (
+        <label className="row">
+          <span>Show Camoufler button</span>
+          <input
+            type="checkbox"
+            checked={settings.overlaysEnabled}
+            onChange={(event) => {
+              void update({ overlaysEnabled: event.target.checked });
+            }}
+          />
+        </label>
+      ) : null}
 
-      <section className="panel">
-        <div className="mode-selection" role="radiogroup" aria-label="Output mode selection">
-          <label className="mode-option">
-            <input
-              type="radio"
-              name="modeSelection"
-              checked={settings.modeSelection === 'generalize'}
-              onChange={() => void update({ modeSelection: 'generalize' })}
-            />
-            <span>Protect my identity</span>
-          </label>
+      {settings.webllmEnabled ? (
+        <section className="panel">
+          <div className="mode-selection" role="radiogroup" aria-label="Output mode selection">
+            <label className="mode-option">
+              <input
+                type="radio"
+                name="modeSelection"
+                checked={settings.modeSelection === 'generalize'}
+                onChange={() => void update({ modeSelection: 'generalize' })}
+              />
+              <span>Protect my identity</span>
+            </label>
 
-          <label className="mode-option disabled-option">
-            <input
-              type="radio"
-              name="modeSelection"
-              checked={settings.modeSelection === 'removePpi'}
-              onChange={() => void update({ modeSelection: 'removePpi' })}
-              disabled
-            />
-            <span>Hide private information</span>
-          </label>
+            <label className="mode-option disabled-option">
+              <input
+                type="radio"
+                name="modeSelection"
+                checked={settings.modeSelection === 'removePpi'}
+                onChange={() => void update({ modeSelection: 'removePpi' })}
+                disabled
+              />
+              <span>Hide private information</span>
+            </label>
 
-          <label className="mode-option disabled-option">
-            <input
-              type="radio"
-              name="modeSelection"
-              checked={settings.modeSelection === 'both'}
-              onChange={() => void update({ modeSelection: 'both' })}
-              disabled
-            />
-            <span>Maximum protection</span>
-          </label>
-        </div>
-      </section>
+            <label className="mode-option disabled-option">
+              <input
+                type="radio"
+                name="modeSelection"
+                checked={settings.modeSelection === 'both'}
+                onChange={() => void update({ modeSelection: 'both' })}
+                disabled
+              />
+              <span>Maximum protection</span>
+            </label>
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel">
         <h2>Your data stays on your device</h2>
-        <p className="muted">Camoufler processes your messages locally before they are sent to AI.</p>
+        <p className="muted">Camoufler uses a local AI model to protect your messages before they are sent to AI.</p>
         {settings.webllmEnabled ? (
           <div className="model-status" role="status">
             <span className="model">Current model: {settings.modelName}</span>
           </div>
         ) : (
           <>
-            <p className="muted">
-              Loads the bundled on-device model in the extension service worker. The first load
-              copies it onto the GPU.
-            </p>
-            <p className="model">Bundled model: {settings.modelName}</p>
+            <h4>Set up local protection to get started.</h4>
+            <p className="model">Model: {settings.modelName}</p>
             <button type="button" disabled={busy} onClick={() => void loadModel()}>
-              {busy ? 'Loading…' : 'Load model'}
+              {busy ? 'Loading…' : 'Load protection model'}
             </button>
+            <p className="muted">The model runs on your device. Your messages are not sent to a remote server for processing.</p>
           </>
         )}
         {progress ? <p className="muted">{progress}</p> : null}
