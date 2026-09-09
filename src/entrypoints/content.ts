@@ -17,7 +17,7 @@ export default defineContentScript({
           import('@/lib/storage'),
           import('@/lib/settings'),
         ]);
-      const logoUrl = getExtensionUrl('/icons/Camoufler.svg');
+      const logoUrl = getExtensionUrl('/icons/CamouflerLogo.svg');
       if (!logoUrl) {
         debug('content: skip, no logo url');
         return;

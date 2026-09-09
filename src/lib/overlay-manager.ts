@@ -67,6 +67,7 @@ export class TextFieldOverlayManager {
       attributeFilter: ['style', 'class', 'type', 'contenteditable', 'disabled', 'readonly'],
     });
 
+    document.addEventListener('input', this.onDocumentInput, true);
     document.addEventListener('scroll', this.onViewportChange, true);
     window.addEventListener('resize', this.onViewportChange);
     window.visualViewport?.addEventListener('resize', this.onViewportChange);
@@ -77,6 +78,7 @@ export class TextFieldOverlayManager {
   stop(): void {
     debug('overlay: stop');
     this.mutationObserver.disconnect();
+    document.removeEventListener('input', this.onDocumentInput, true);
     document.removeEventListener('scroll', this.onViewportChange, true);
     window.removeEventListener('resize', this.onViewportChange);
     window.visualViewport?.removeEventListener('resize', this.onViewportChange);
@@ -112,6 +114,7 @@ export class TextFieldOverlayManager {
       if (!fieldSet.has(field) || !field.isConnected) {
         marker.button.remove();
         marker.revertButton.remove();
+        marker.controls.remove();
         field.removeEventListener('input', marker.inputListener);
         this.markers.delete(field);
         this.resizeObserver.unobserve(field);
@@ -137,6 +140,10 @@ export class TextFieldOverlayManager {
 
     this.scheduleLayout();
   }
+
+  private readonly onDocumentInput = (): void => {
+    this.scan();
+  };
 
   private readonly onViewportChange = (): void => {
     this.scheduleLayout();
@@ -360,6 +367,13 @@ export class TextFieldOverlayManager {
           state.originalText = null;
           state.controls.classList.remove('expanded');
         }
+
+        if (!getFieldText(field).trim()) {
+          this.cancelParaphrase(state);
+          this.scan();
+          return;
+        }
+
         this.cancelParaphrase(state);
       },
     };
@@ -390,8 +404,11 @@ export class TextFieldOverlayManager {
       state.originalText = null;
       state.controls.classList.remove('expanded');
       this.cancelParaphrase(state);
+      state.applying = false;
+      state.suppressClick = false;
+      state.button.disabled = false;
+      state.button.classList.remove('loading');
       this.scheduleLayout();
-      state.applying = true;
       applyOutput(field, originalText);
     });
     field.addEventListener('input', state.inputListener);
@@ -404,6 +421,7 @@ export class TextFieldOverlayManager {
   private clearMarkers(): void {
     for (const [field, marker] of this.markers) {
       marker.button.remove();
+      marker.revertButton.remove();
       marker.controls.remove();
       field.removeEventListener('input', marker.inputListener);
       this.resizeObserver.unobserve(field);
@@ -449,6 +467,7 @@ export class TextFieldOverlayManager {
     const revertWidth = 58;
     const groupPadding = 10;
     const buttonGap = 2;
+    const controlsHeight = buttonHeight + groupPadding + 2;
 
     for (const [field, state] of this.markers) {
       const rect = field.getBoundingClientRect();
@@ -474,23 +493,39 @@ export class TextFieldOverlayManager {
         continue;
       }
 
-      state.controls.style.display = 'flex';
-      state.controls.classList.toggle('expanded', revertVisible);
-      state.controls.style.width =
-        `${buttonWidth + (revertVisible ? revertWidth + buttonGap : 0) + groupPadding + 2}px`;
-      state.controls.style.height = `${buttonHeight + groupPadding + 2}px`;
       const defaultRight = inset;
       const defaultBottom = inset;
       const position = this.positions[this.pageKey]?.[state.positionKey];
       const right = position?.right ?? defaultRight;
       const bottom = position?.bottom ?? defaultBottom;
       const controlEdgeInset = groupPadding / 2 + 1;
-      state.controls.style.top = '';
+      const belowFits = window.innerHeight - rect.bottom >= controlsHeight + inset;
+      const aboveFits = rect.top >= controlsHeight + inset;
+      const useTop = !belowFits && aboveFits;
+
+      state.controls.style.display = 'flex';
+      state.controls.classList.toggle('expanded', revertVisible);
+      state.controls.style.width =
+        `${buttonWidth + (revertVisible ? revertWidth + buttonGap : 0) + groupPadding + 2}px`;
+      state.controls.style.height = `${controlsHeight}px`;
       state.controls.style.left = '';
+      state.controls.style.top = '';
       state.controls.style.right =
         `${window.innerWidth - (rect.right - right + controlEdgeInset)}px`;
-      state.controls.style.bottom =
-        `${window.innerHeight - (rect.bottom - bottom + controlEdgeInset)}px`;
+
+      if (useTop) {
+        const centeredTop = rect.top + rect.height / 2 - controlsHeight / 2;
+        state.controls.style.bottom = '';
+        state.controls.style.top = `${Math.min(
+          Math.max(0, centeredTop),
+          Math.max(0, window.innerHeight - controlsHeight),
+        )}px`;
+      } else {
+        state.controls.style.top = '';
+        state.controls.style.bottom =
+          `${window.innerHeight - (rect.bottom - bottom + controlEdgeInset)}px`;
+      }
+
       state.button.style.width = `${buttonWidth}px`;
       state.button.style.height = `${buttonHeight}px`;
       state.revertButton.style.width = `${revertWidth}px`;
@@ -632,6 +667,8 @@ export class TextFieldOverlayManager {
   private cancelParaphrase(state: FieldState): void {
     debug('overlay: paraphrase cancelled', state.positionKey);
     state.requestId += 1;
+    state.applying = false;
+    state.suppressClick = false;
     void this.setLoadingState(state, false);
     state.button.disabled = false;
     state.button.removeAttribute('aria-busy');
