@@ -3,6 +3,7 @@ import {
   type InitProgressReport,
 } from '@mlc-ai/web-llm';
 import { useCallback, useEffect, useState } from 'react';
+import packageJson from '../../package.json';
 import { DEFAULT_SETTINGS, normalizeSettings, type AppSettings } from '@/lib/settings';
 import { BUNDLED_MODEL_ID, getBundledEngineConfig } from '@/lib/model';
 import { settingsStorage } from '@/lib/storage';
@@ -97,12 +98,14 @@ export function PopupApp() {
         <img src="/icons/Camoufler.svg" width={32} height={32} alt="" />
         <div>
           <h1>Camoufler</h1>
-          <p className="muted">Your camouflage in AI world.</p>
+          <p className="muted">
+            "Protect your data when using AI"
+          </p>
         </div>
       </header>
 
       <label className="row">
-        <span>Show overlays</span>
+        <span>Show Camoufler button</span>
         <input
           type="checkbox"
           checked={settings.overlaysEnabled}
@@ -113,8 +116,44 @@ export function PopupApp() {
       </label>
 
       <section className="panel">
-        <h3>Local hosted LLM</h3>
-        <p className="muted">We run LLM's locally to keep your inputs private.</p>
+        <div className="mode-selection" role="radiogroup" aria-label="Output mode selection">
+          <label className="mode-option">
+            <input
+              type="radio"
+              name="modeSelection"
+              checked={settings.modeSelection === 'generalize'}
+              onChange={() => void update({ modeSelection: 'generalize' })}
+            />
+            <span>Protect my identity</span>
+          </label>
+
+          <label className="mode-option disabled-option">
+            <input
+              type="radio"
+              name="modeSelection"
+              checked={settings.modeSelection === 'removePpi'}
+              onChange={() => void update({ modeSelection: 'removePpi' })}
+              disabled
+            />
+            <span>Hide private information</span>
+          </label>
+
+          <label className="mode-option disabled-option">
+            <input
+              type="radio"
+              name="modeSelection"
+              checked={settings.modeSelection === 'both'}
+              onChange={() => void update({ modeSelection: 'both' })}
+              disabled
+            />
+            <span>Maximum protection</span>
+          </label>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Your data stays on your device</h2>
+        <p className="muted">Camoufler processes your messages locally before they are sent to AI.</p>
         {settings.webllmEnabled ? (
           <div className="model-status" role="status">
             <span className="model">Current model: {settings.modelName}</span>
