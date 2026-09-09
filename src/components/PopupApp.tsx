@@ -2,7 +2,7 @@ import {
   CreateExtensionServiceWorkerMLCEngine,
   type InitProgressReport,
 } from '@mlc-ai/web-llm';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_SETTINGS, normalizeSettings, type AppSettings } from '@/lib/settings';
 import { BUNDLED_MODEL_ID, getBundledEngineConfig } from '@/lib/model';
 import { settingsStorage } from '@/lib/storage';
@@ -11,7 +11,8 @@ import './PopupApp.css';
 
 export function PopupApp() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [progress, setProgress] = useState<string>('');
+  const [progress, setProgress] = useState<number | null>(null);
+  const progressRef = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>('');
 
@@ -52,6 +53,13 @@ export function PopupApp() {
     await settingsStorage.setValue({ ...current, ...patch });
   }, []);
 
+  const updateProgress = useCallback((nextValue: number) => {
+    const clamped = Math.min(Math.max(nextValue, 0), 100);
+    const resolved = Math.max(progressRef.current, clamped);
+    progressRef.current = resolved;
+    setProgress(resolved);
+  }, []);
+
   const loadModel = useCallback(async () => {
     if (!settings) {
       return;
@@ -60,28 +68,32 @@ export function PopupApp() {
     debug('popup: loadModel start', settings.modelId);
     setBusy(true);
     setError('');
-    setProgress('Connecting to the extension service worker…');
+    progressRef.current = 0;
+    setProgress(0);
 
     try {
       await CreateExtensionServiceWorkerMLCEngine(
         BUNDLED_MODEL_ID,
         getBundledEngineConfig((report: InitProgressReport) => {
-          debug('popup: loadModel progress', report.text);
-          setProgress(report.text);
+          const nextProgress = Math.min(Math.max(report.progress ?? 0, 0), 1) * 100;
+          debug('popup: loadModel progress', { progress: nextProgress, text: report.text });
+          updateProgress(nextProgress);
         }),
       );
       await update({ webllmEnabled: true, modelId: BUNDLED_MODEL_ID });
       debug('popup: loadModel ready', settings.modelId);
-      setProgress('');
+      progressRef.current = 100;
+      setProgress(100);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Failed to load WebLLM.';
       debug('popup: loadModel failed', message);
       setError(message);
-      setProgress('');
+      progressRef.current = 0;
+      setProgress(null);
     } finally {
       setBusy(false);
     }
-  }, [settings, update]);
+  }, [settings, update, updateProgress]);
 
   if (!settings) {
     return (
@@ -94,7 +106,7 @@ export function PopupApp() {
   return (
     <main className="popup">
       <header className="header">
-        <img src="/icons/Camoufler.svg" width={32} height={32} alt="" />
+        <img src="/icons/CamouflerLogo.svg" width={32} height={32} alt="" />
         <div>
           <h1>Camoufler</h1>
           <p className="muted">
@@ -171,7 +183,17 @@ export function PopupApp() {
             <p className="muted">The model runs on your device. Your messages are not sent to a remote server for processing.</p>
           </>
         )}
-        {progress ? <p className="muted">{progress}</p> : null}
+        {busy && progress !== null ? (
+          <div className="progress-block" aria-live="polite">
+            <div className="progress-meta">
+              <span>Downloading model</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <div className="progress-track" aria-hidden="true">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        ) : null}
         {error ? <p className="error">{error}</p> : null}
       </section>
     </main>
