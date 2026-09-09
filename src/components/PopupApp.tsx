@@ -94,7 +94,7 @@ export function PopupApp() {
   return (
     <main className="popup">
       <header className="header">
-        <img src="/icons/Camoufler.svg" width={32} height={32} alt="" />
+        <img src="/icons/CamouflerLogo.svg" width={32} height={32} alt="" />
         <div>
           <h1>Camoufler</h1>
           <p className="muted">
