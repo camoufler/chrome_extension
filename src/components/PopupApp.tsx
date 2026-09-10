@@ -167,7 +167,6 @@ export function PopupApp() {
       ) : null}
 
       <section className="panel">
-        <h2>Your data stays on your device</h2>
         <p className="muted">Camoufler uses a local AI model to protect your messages before they are sent to AI.</p>
         {settings.webllmEnabled ? (
           <div className="model-status" role="status">
@@ -175,12 +174,10 @@ export function PopupApp() {
           </div>
         ) : (
           <>
-            <h4>Set up local protection to get started.</h4>
             <p className="model">Model: {settings.modelName}</p>
             <button type="button" disabled={busy} onClick={() => void loadModel()}>
               {busy ? 'Loading…' : 'Load protection model'}
             </button>
-            <p className="muted">The model runs on your device. Your messages are not sent to a remote server for processing.</p>
           </>
         )}
         {busy && progress !== null ? (
