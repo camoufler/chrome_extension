@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { anonymize } from "./anonymize";
+import { anonymize } from "../lib/anonymize";
 
 describe("anonymize", () => {
   it("redacts email, aws key, and password", () => {

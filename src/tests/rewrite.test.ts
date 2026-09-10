@@ -7,7 +7,7 @@ import {
   shapeErroringInput,
   wrapRewriteUserMessage,
   wrapSlotUserMessage,
-} from "./rewrite";
+} from "../lib/rewrite";
 
 describe("rewrite helpers", () => {
   it("wraps rewrite messages with markers", () => {

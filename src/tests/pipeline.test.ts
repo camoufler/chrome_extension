@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { runStandardize } from "./pipeline";
+import { runStandardize } from "../lib/pipeline";
 
 describe("pipeline", () => {
   it("rewrites then anonymizes utterances", async () => {

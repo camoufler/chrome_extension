@@ -5,7 +5,7 @@ import {
   classify,
   classifyHeuristic,
   parseLabel,
-} from "./prompt-types";
+} from "../lib/prompt-types";
 
 describe("prompt-types", () => {
   it("treats slang as an utterance", () => {

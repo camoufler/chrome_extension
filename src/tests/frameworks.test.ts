@@ -16,7 +16,7 @@ import {
   completeFromPrediction,
   mergePredictedSlots,
   needsPrediction,
-} from "./frameworks";
+} from "../lib/frameworks";
 
 describe("frameworks", () => {
   it("assembles RTF as one paragraph", () => {
