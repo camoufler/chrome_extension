@@ -1,10 +1,66 @@
 import { debug } from '@/lib/debug';
 
+const SUPPORTED_AIPROVIDER_PATTERNS = [
+  /^https:\/\/chatgpt\.com\//,
+  /^https:\/\/chat\.openai\.com\//,
+  /^https:\/\/claude\.ai\//,
+  /^https:\/\/([a-z0-9-]+\.)?claude\.ai\//,
+  /^https:\/\/copilot\.microsoft\.com\//,
+  /^https:\/\/www\.bing\.com\/chat\b/,
+  /^https:\/\/([a-z0-9-]+\.)?githubcopilot\.com\//,
+  /^https:\/\/github\.com\/copilot\b/,
+  /^https:\/\/gemini\.google\.com\//,
+  /^https:\/\/www\.perplexity\.ai\//,
+  /^https:\/\/([a-z0-9-]+\.)?perplexity\.ai\//,
+  /^https:\/\/poe\.com\//,
+  /^https:\/\/([a-z0-9-]+\.)?poe\.com\//,
+  /^https:\/\/((www\.)?you\.com)\//,
+  /^https:\/\/grok\.com\//,
+  /^https:\/\/x\.ai\//,
+  /^https:\/\/chat\.deepseek\.com\//,
+  /^https:\/\/deepseek\.com\//,
+  /^https:\/\/chat\.mistral\.ai\//,
+  /^https:\/\/app\.mistral\.ai\//,
+  /^https:\/\/((www\.)?openrouter\.ai)\//,
+  /^https:\/\/([a-z0-9-]+\.)?openrouter\.ai\//,
+  /^https:\/\/huggingface\.co\/chat\b/,
+];
+
 export default defineContentScript({
-  matches: ['<all_urls>'],
+  matches: [
+    'https://chatgpt.com/*',
+    'https://chat.openai.com/*',
+    'https://claude.ai/*',
+    'https://*.claude.ai/*',
+    'https://copilot.microsoft.com/*',
+    'https://www.bing.com/chat*',
+    'https://*.githubcopilot.com/*',
+    'https://github.com/copilot*',
+    'https://gemini.google.com/*',
+    'https://www.perplexity.ai/*',
+    'https://*.perplexity.ai/*',
+    'https://poe.com/*',
+    'https://*.poe.com/*',
+    'https://you.com/*',
+    'https://www.you.com/*',
+    'https://grok.com/*',
+    'https://x.ai/*',
+    'https://chat.deepseek.com/*',
+    'https://deepseek.com/*',
+    'https://chat.mistral.ai/*',
+    'https://app.mistral.ai/*',
+    'https://openrouter.ai/*',
+    'https://*.openrouter.ai/*',
+    'https://huggingface.co/chat*',
+  ],
   allFrames: true,
   runAt: 'document_idle',
   async main() {
+    if (!isSupportedAiProviderUrl(location.href)) {
+      debug('content: skip, unsupported site', location.href);
+      return;
+    }
+
     if (!hasExtensionContext()) {
       debug('content: skip, no extension context');
       return;
@@ -109,6 +165,10 @@ function getExtensionUrl(path: string): string | null {
 
 function getChromeRuntime(): ChromeRuntime | undefined {
   return (globalThis as typeof globalThis & { chrome?: { runtime?: ChromeRuntime } }).chrome?.runtime;
+}
+
+function isSupportedAiProviderUrl(url: string): boolean {
+  return SUPPORTED_AIPROVIDER_PATTERNS.some((pattern) => pattern.test(url));
 }
 
 function isExtensionContextInvalidated(cause: unknown): boolean {
