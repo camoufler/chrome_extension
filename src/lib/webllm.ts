@@ -11,6 +11,17 @@ import {
 
 export const WEBLLM_PORT_NAME = 'web_llm_service_worker';
 
+export function isWebGPUAvailable(): boolean {
+	const gpu = (globalThis.navigator as Navigator & { gpu?: { requestAdapter?: () => unknown } })?.gpu;
+	return typeof gpu?.requestAdapter === 'function';
+}
+
+export function assertWebGPUAvailable(): void {
+	if (!isWebGPUAvailable()) {
+		throw new Error('WebGPU is not available in this browser, so the local AI model cannot start.');
+	}
+}
+
 interface StandardPrompt {
   system_prompt: string;
 }
@@ -37,6 +48,8 @@ export async function stopParaphrasing(): Promise<void> {
 }
 
 export async function paraphraseText(text: string, modelId: string = BUNDLED_MODEL_ID): Promise<string> {
+	assertWebGPUAvailable();
+
 	const resolvedModelId = BUNDLED_MODEL_ID;
 	if (modelId !== resolvedModelId) {
 		debug('webllm: ignore requested model', modelId);

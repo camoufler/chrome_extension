@@ -19,9 +19,9 @@ The extension is intentionally scoped to AI-provider pages instead of all websit
 - `https://claude.ai/*`
 - `https://*.claude.ai/*`
 - `https://copilot.microsoft.com/*`
-- `https://www.bing.com/chat*`
+- `https://www.bing.com/*`
 - `https://*.githubcopilot.com/*`
-- `https://github.com/copilot*`
+- `https://github.com/*`
 - `https://gemini.google.com/*`
 - `https://www.perplexity.ai/*`
 - `https://*.perplexity.ai/*`
@@ -37,7 +37,7 @@ The extension is intentionally scoped to AI-provider pages instead of all websit
 - `https://app.mistral.ai/*`
 - `https://openrouter.ai/*`
 - `https://*.openrouter.ai/*`
-- `https://huggingface.co/chat*`
+- `https://huggingface.co/*`
 
 ## Development
 

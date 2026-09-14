@@ -1,6 +1,6 @@
 import { ExtensionServiceWorkerMLCEngineHandler } from '@mlc-ai/web-llm';
 import { debug, debugVerbose } from '@/lib/debug';
-import { WEBLLM_PORT_NAME } from '@/lib/webllm';
+import { isWebGPUAvailable, WEBLLM_PORT_NAME } from '@/lib/webllm';
 
 export default defineBackground(() => {
   const handlers = new Map();
@@ -8,6 +8,11 @@ export default defineBackground(() => {
   browser.runtime.onConnect.addListener((port) => {
     if (port.name !== WEBLLM_PORT_NAME) {
       debugVerbose('background: ignored port', port.name);
+      return;
+    }
+
+    if (!isWebGPUAvailable()) {
+      debug('background: ignored webllm port because WebGPU is unavailable');
       return;
     }
 

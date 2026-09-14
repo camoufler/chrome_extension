@@ -7,6 +7,7 @@ import { DEFAULT_SETTINGS, normalizeSettings, type AppSettings } from '@/lib/set
 import { BUNDLED_MODEL_ID, getBundledEngineConfig } from '@/lib/model';
 import { settingsStorage } from '@/lib/storage';
 import { debug } from '@/lib/debug';
+import { isWebGPUAvailable } from '@/lib/webllm';
 import './PopupApp.css';
 
 export function PopupApp() {
@@ -66,6 +67,15 @@ export function PopupApp() {
     }
 
     debug('popup: loadModel start', settings.modelId);
+
+    if (!isWebGPUAvailable()) {
+      setBusy(false);
+      setError('WebGPU is not supported in this browser, so the local protection model cannot run.');
+      progressRef.current = 0;
+      setProgress(null);
+      return;
+    }
+
     setBusy(true);
     setError('');
     progressRef.current = 0;
