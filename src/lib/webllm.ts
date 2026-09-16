@@ -35,17 +35,6 @@ export function assertWebGPUAvailable(): void {
 	}
 }
 
-export function isWebGPUAvailable(): boolean {
-	const gpu = (globalThis.navigator as Navigator & { gpu?: { requestAdapter?: () => unknown } })?.gpu;
-	return typeof gpu?.requestAdapter === 'function';
-}
-
-export function assertWebGPUAvailable(): void {
-	if (!isWebGPUAvailable()) {
-		throw new Error('WebGPU is not available in this browser, so the local AI model cannot start.');
-	}
-}
-
 interface StandardPrompt {
   system_prompt: string;
 }
