@@ -19,9 +19,9 @@ The extension is intentionally scoped to AI-provider pages instead of all websit
 - `https://claude.ai/*`
 - `https://*.claude.ai/*`
 - `https://copilot.microsoft.com/*`
-- `https://www.bing.com/chat*`
+- `https://www.bing.com/*`
 - `https://*.githubcopilot.com/*`
-- `https://github.com/copilot*`
+- `https://github.com/*`
 - `https://gemini.google.com/*`
 - `https://www.perplexity.ai/*`
 - `https://*.perplexity.ai/*`
@@ -37,7 +37,7 @@ The extension is intentionally scoped to AI-provider pages instead of all websit
 - `https://app.mistral.ai/*`
 - `https://openrouter.ai/*`
 - `https://*.openrouter.ai/*`
-- `https://huggingface.co/chat*`
+- `https://huggingface.co/*`
 
 ## Development
 
@@ -48,7 +48,7 @@ npm run dev
 
 Load the unpacked build from `.output/chrome-mv3-dev` if the browser does not open automatically.
 
-## Production
+## Production / verification
 
 ```bash
 npm run compile
@@ -86,7 +86,7 @@ Emails, phones, keys, and similar tokens become `[EMAIL]`, `[PHONE]`, `[API_KEY]
 - TypeScript
 - Chrome Manifest V3
 - React 19
-- Vite (via WXT)
+- Vite via WXT
 - WXT
 - ESLint + Prettier
 - Vitest

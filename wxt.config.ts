@@ -11,7 +11,7 @@ export default defineConfig({
   manifest: {
     name: 'Camoufler',
     description:
-      'Scan the active tab for text fields and mark them with the Camoufler logo.',
+      'Privacy camouflage for your AI prompts',
     permissions: ['storage', 'unlimitedStorage'],
     host_permissions: [
       'https://chatgpt.com/*',
@@ -19,9 +19,9 @@ export default defineConfig({
       'https://claude.ai/*',
       'https://*.claude.ai/*',
       'https://copilot.microsoft.com/*',
-      'https://www.bing.com/chat*',
+      'https://www.bing.com/*',
       'https://*.githubcopilot.com/*',
-      'https://github.com/copilot*',
+      'https://github.com/*',
       'https://gemini.google.com/*',
       'https://www.perplexity.ai/*',
       'https://*.perplexity.ai/*',
@@ -37,7 +37,7 @@ export default defineConfig({
       'https://app.mistral.ai/*',
       'https://openrouter.ai/*',
       'https://*.openrouter.ai/*',
-      'https://huggingface.co/chat*',
+      'https://huggingface.co/*',
     ],
     web_accessible_resources: [
       {
@@ -48,9 +48,9 @@ export default defineConfig({
           'https://claude.ai/*',
           'https://*.claude.ai/*',
           'https://copilot.microsoft.com/*',
-          'https://www.bing.com/chat*',
+          'https://www.bing.com/*',
           'https://*.githubcopilot.com/*',
-          'https://github.com/copilot*',
+          'https://github.com/*',
           'https://gemini.google.com/*',
           'https://www.perplexity.ai/*',
           'https://*.perplexity.ai/*',
@@ -66,7 +66,7 @@ export default defineConfig({
           'https://app.mistral.ai/*',
           'https://openrouter.ai/*',
           'https://*.openrouter.ai/*',
-          'https://huggingface.co/chat*',
+          'https://huggingface.co/*',
         ],
       },
     ],
@@ -95,7 +95,7 @@ export default defineConfig({
       chunkSizeWarningLimit: 7000,
     },
     optimizeDeps: {
-      exclude: ["@mlc-ai/web-llm"],
+      exclude: ['@mlc-ai/web-llm'],
     },
   }),
   webExt: {

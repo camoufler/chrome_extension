@@ -24,15 +24,24 @@ const CLASSIFY_MAX_TOKENS = 32;
 
 type Engine = Awaited<ReturnType<typeof CreateExtensionServiceWorkerMLCEngine>>;
 
+export function isWebGPUAvailable(): boolean {
+	const gpu = (globalThis.navigator as Navigator & { gpu?: { requestAdapter?: () => unknown } })?.gpu;
+	return typeof gpu?.requestAdapter === 'function';
+}
+
+export function assertWebGPUAvailable(): void {
+	if (!isWebGPUAvailable()) {
+		throw new Error('WebGPU is not available in this browser, so the local AI model cannot start.');
+	}
+}
+
 interface StandardPrompt {
   system_prompt: string;
 }
 
 let standardPromptPromise: Promise<string> | null = null;
 
-let enginePromise: ReturnType<
-  typeof CreateExtensionServiceWorkerMLCEngine
-> | null = null;
+let enginePromise: ReturnType<typeof CreateExtensionServiceWorkerMLCEngine> | null = null;
 let loadedModelId: string | null = null;
 
 export async function stopParaphrasing(): Promise<void> {
