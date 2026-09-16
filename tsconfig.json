@@ -7,5 +7,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
-  }
+  },
+  "exclude": ["src/**/*.test.ts"]
 }

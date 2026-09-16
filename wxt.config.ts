@@ -1,8 +1,8 @@
-import { defineConfig } from 'wxt';
+import { defineConfig } from "wxt";
 
 export default defineConfig({
-  srcDir: 'src',
-  modules: ['@wxt-dev/module-react'],
+  srcDir: "src",
+  modules: ["@wxt-dev/module-react"],
   imports: {
     eslintrc: {
       enabled: 9,
@@ -98,4 +98,9 @@ export default defineConfig({
       exclude: ['@mlc-ai/web-llm'],
     },
   }),
+  webExt: {
+    // web-ext otherwise injects --disable-blink-features=AutomationControlled,
+    // which Chrome flags as unsupported and shows an infobar.
+    chromiumArgs: ["--enable-blink-features=AutomationControlled"],
+  },
 });
